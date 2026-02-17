@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>Bounty Pirates - Loading</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            background: #000 url('images/loading.png') no-repeat center center/cover;
+            filter: brightness(0.7) contrast(1.2) sepia(0.3);
+            image-rendering: auto !important;
+        }
+
+
+
+
+
+
+
+        .subtitle {
+            font-size: clamp(0.6rem, 3vw, 0.9rem);
+        }
+
+        .loading-bar-container {
+            width: 85%;
+            max-width: 25rem;
+            background: #222;
+            border: 0.2rem solid #444;
+            padding: 0.25rem;
+        }
+
+        .loading-bar {
+            height: 1.5rem;
+            background-color: #55FF55;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(90deg, transparent 0%, transparent 90%, rgba(255, 255, 255, 0.2) 90%, rgba(255, 255, 255, 0.2) 100%);
+            background-size: 0.5rem 100%;
+        }
+
+        .sword {
+            width: clamp(2rem, 10vw, 3rem);
+            height: 0.25rem;
+            background: linear-gradient(90deg, #888, #FFAA00);
+            position: relative;
+        }
+
+        .sword::before {
+            content: '';
+            position: absolute;
+            top: -0.5rem;
+            left: 0;
+            width: 0.75rem;
+            height: 1.25rem;
+            background: #666;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+
+        .logo-img {
+            filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 5px rgba(255, 170, 0, 0.3));
+            transition: all 0.5s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-black flex flex-col items-center justify-center relative overflow-hidden">
+    <div class="bg-layer move-cinematic"></div>
+    <!-- Global atmospheric overlay handled by style.css body::before -->
+    <!-- Removed redundant dark overlay -->
+
+    <div class="content-wrapper flex flex-col items-center gap-[2rem] z-10 w-full px-[1rem]">
+        <img src="images/logo.png" alt="Bounty Pirates" class="w-full max-w-[480px] h-auto mx-auto mb-2 logo-img">
+        <p class="subtitle text-[#55FF55] text-center tracking-[0.15rem] opacity-90">MINECRAFT ADVENTURE</p>
+
+        <div class="loading-bar-container mt-[1rem]">
+            <div id="loadingBar" class="loading-bar w-0"></div>
+        </div>
+        <div id="loadingPercent" class="loading-percent text-white text-[0.8rem] mt-[0.5rem]">0%</div>
+    </div>
+
+    <script src="global.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingBar = document.getElementById('loadingBar');
+            const loadingPercent = document.getElementById('loadingPercent');
+            const urlParams = new URLSearchParams(window.location.search);
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 5;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+
+                    setTimeout(() => {
+                        // After loading, decide where to go
+                        if (urlParams.has('skipCrew')) {
+                            window.location.replace('login.html');
+                        } else {
+                            window.location.replace('displaycrew.html');
+                        }
+                    }, 800);
+                }
+                loadingBar.style.width = progress + '%';
+                loadingPercent.textContent = Math.floor(progress) + '%';
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>

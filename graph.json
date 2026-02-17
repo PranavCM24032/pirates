@@ -1,0 +1,44 @@
+{
+    "graph_logic": {
+        "A": {
+            "B": 20,
+            "C": 10
+        },
+        "B": {
+            "F": 10,
+            "A": -5
+        },
+        "C": {
+            "B": 10,
+            "G": 15,
+            "D": 5
+        },
+        "D": {
+            "C": -5,
+            "H": 10
+        },
+        "F": {
+            "end": 50
+        },
+        "G": {
+            "J": 5
+        },
+        "H": {
+            "A": -10
+        },
+        "J": {
+            "F": 10
+        }
+    },
+    "location_names": {
+        "A": "Central Library",
+        "B": "Xerox Shop",
+        "C": "Canteen",
+        "D": "Parking Lot",
+        "F": "Science Laboratory",
+        "G": "Sports Complex",
+        "H": "Main Gate",
+        "J": "Staff Room",
+        "end": "Treasure Chamber"
+    }
+}

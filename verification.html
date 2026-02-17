@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirate Vault Verification</title>
+
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="global.js" defer></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Outfit', sans-serif;
+            color: #fff;
+            overflow-y: auto;
+            /* ENABLE SCROLLING FOR MOBILE */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ CINEMATIC COLOR GRADING & BACKGROUND ⭐                   */
+        /* ------------------------------------------------------------ */
+        .background-layer {
+            position: fixed;
+            inset: -5%;
+            width: 110%;
+            height: 110%;
+            z-index: 1;
+            /* Using your requested door (2) image */
+            background: url('images/door%20(2).png') no-repeat center center;
+            background-size: cover;
+            transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            /* BALANCED COLOR CORRECTION */
+            filter: saturate(1.1) contrast(1.05) brightness(1.0);
+        }
+
+        .move-cinematic {
+            animation: cinematicMove 30s ease-in-out infinite alternate;
+        }
+
+        @keyframes cinematicMove {
+            0% {
+                transform: scale(1) translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: scale(1.08) translate(-1%, 1%) rotate(0.5deg);
+            }
+
+            100% {
+                transform: scale(1.15) translate(1%, -1%) rotate(-0.5deg);
+            }
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ FULL THEME ATMOSPHERIC OVERLAYS ⭐                        */
+        /* ------------------------------------------------------------ */
+
+        /* Master Color Grade & Vignette - RAISED CLARITY */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background: radial-gradient(circle at center, transparent 0%, rgba(10, 5, 0, 0.4) 100%);
+            pointer-events: none;
+        }
+
+        /* Film Grain & Static Scanlines (Full Theme Signature) */
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background:
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.12) 50%),
+                url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.1"/></svg>');
+            background-size: 100% 3px, 128px 128px;
+            pointer-events: none;
+            opacity: 0.25;
+            animation: none !important;
+            /* Strictly no movement as requested */
+        }
+
+        /* Clean Background (No internal overlays, handled by body::before/after) */
+        .background-layer::before,
+        .background-layer::after {
+            display: none !important;
+        }
+
+        body.showing-lens .background-layer {
+            transform: scale(1.08);
+            filter: saturate(0.9) contrast(1.1) brightness(0.7) sepia(0.2);
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ AMBIENT PARTICLES (CAVERN DUST) ⭐                        */
+        /* ------------------------------------------------------------ */
+        .particles {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0.3;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(212, 175, 55, 0.6);
+            border-radius: 50%;
+            animation: floatParticle 20s infinite linear;
+        }
+
+        @keyframes floatParticle {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(100vw, -100vh) scale(0.5);
+                opacity: 0;
+            }
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ CLICK TRIGGER HUD ⭐                                       */
+        /* ------------------------------------------------------------ */
+        .door-trigger {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 20;
+            cursor: default;
+            /* No longer a button */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            /* MUCH LIGHTER VIGNETTE */
+            background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.25) 100%);
+            transition: opacity 1.2s ease, visibility 1.2s;
+        }
+
+        .scanner-hud {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .scanner-icon {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.5));
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.4));
+                opacity: 0.8;
+            }
+
+            50% {
+                filter: drop-shadow(0 0 30px rgba(212, 175, 55, 0.8));
+                opacity: 1;
+            }
+        }
+
+        .scanner-text {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            color: #D4AF37;
+            animation: pulseText 1.8s infinite alternate;
+            letter-spacing: 3px;
+            text-shadow:
+                0 0 15px rgba(212, 175, 55, 0.6),
+                0 0 30px rgba(212, 175, 55, 0.3),
+                2px 2px 0 rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            padding: 20px 40px;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.6), rgba(5, 5, 5, 0.8));
+            backdrop-filter: blur(8px);
+        }
+
+        .door-trigger:hover .scanner-text {
+            font-size: 1.1rem;
+            text-shadow:
+                0 0 25px rgba(212, 175, 55, 0.9),
+                0 0 50px rgba(212, 175, 55, 0.5),
+                3px 3px 0 rgba(0, 0, 0, 0.9);
+            transform: scale(1.08) translateY(-4px);
+            border-color: #D4AF37;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(212, 175, 55, 0.3),
+                inset 0 0 20px rgba(212, 175, 55, 0.1);
+        }
+
+        @keyframes pulseText {
+            from {
+                opacity: 0.4;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ PREMIUM VAULT PANEL ⭐                                     */
+        /* ------------------------------------------------------------ */
+        .glass-container {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+
+            /* Minecraft-style Glass Block Texture - Removed !important to allow function theme */
+            background-size: 8px 8px, 8px 8px, 100% 100%;
+            backdrop-filter: blur(15px) saturate(1.2);
+
+            /* Pixelated 3D Border - Removed !important to allow function theme */
+            box-shadow:
+                0 40px 100px rgba(0, 0, 0, 0.9),
+                inset 6px 6px 0 rgba(255, 255, 255, 0.1),
+                inset -6px -6px 0 rgba(0, 0, 0, 0.4);
+
+            padding: 4rem 2rem;
+            display: flex !important;
+            /* Constant visibility */
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 2.5rem !important;
+
+            width: 500px !important;
+            max-width: 95vw !important;
+            z-index: 9999 !important;
+            margin: 0 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* 3D Minecraft Block Edges */
+        .glass-container::after {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border: 4px solid #1a0a02;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .mc-edge {
+            position: absolute;
+            background: #D4AF37;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+            z-index: 10;
+        }
+
+        .mc-edge-t {
+            top: -6px;
+            left: 20px;
+            right: 20px;
+            height: 4px;
+        }
+
+        .mc-edge-b {
+            bottom: -6px;
+            left: 20px;
+            right: 20px;
+            height: 4px;
+        }
+
+        .mc-edge-l {
+            left: -6px;
+            top: 20px;
+            bottom: 20px;
+            width: 4px;
+        }
+
+        .mc-edge-r {
+            right: -6px;
+            top: 20px;
+            bottom: 20px;
+            width: 4px;
+        }
+
+        .mc-bolt {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #4A220A;
+            border: 2px solid #D4AF37;
+            z-index: 11;
+        }
+
+        .bolt-tl {
+            top: -8px;
+            left: -8px;
+        }
+
+        .bolt-tr {
+            top: -8px;
+            right: -8px;
+        }
+
+        .bolt-bl {
+            bottom: -8px;
+            left: -8px;
+        }
+
+        .bolt-br {
+            bottom: -8px;
+            right: -8px;
+        }
+
+        /* Panel "Glow" Ornament - RAISED Z-INDEX TO PREVENT CUTTING */
+        .glass-container::before {
+            content: '⚔️';
+            position: absolute;
+            top: -24px;
+            /* Slightly adjusted for better balance */
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            border: 3px solid #D4AF37;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            z-index: 100;
+            /* High z-index to sit above borders */
+            box-shadow:
+                0 0 20px rgba(212, 175, 55, 0.6),
+                0 5px 15px rgba(0, 0, 0, 0.8);
+        }
+
+        body.showing-lens .glass-container {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+        }
+
+        .panel-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            color: #D4AF37;
+            text-shadow:
+                3px 3px 0 #000,
+                0 0 10px rgba(212, 175, 55, 0.5);
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ ANCIENT RUNE INPUTS ⭐                                    */
+        /* ------------------------------------------------------------ */
+        .otp-container {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 15px !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .otp-box {
+            width: 55px;
+            height: 70px;
+            text-align: center;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.3rem;
+            background: #0a0a0a;
+            border: 3px solid #3a3a3a;
+            color: #D4AF37;
+            outline: none;
+            box-shadow: inset 0 5px 15px rgba(0, 0, 0, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .otp-box:focus {
+            border-color: #D4AF37;
+            transform: translateY(-8px) scale(1.05);
+            background: #111;
+            box-shadow:
+                0 15px 30px rgba(212, 175, 55, 0.3),
+                inset 0 2px 10px rgba(212, 175, 55, 0.2);
+            color: #fff;
+        }
+
+        /* Success/Failure States */
+        .otp-box.success {
+            border-color: #2ECC71 !important;
+            color: #2ECC71 !important;
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
+        }
+
+        .otp-box.error {
+            border-color: #FF4444 !important;
+            color: #FF4444 !important;
+            animation: shakeBox 0.3s;
+        }
+
+        @keyframes shakeBox {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
+        }
+
+        /* GLOBAL HUD SYSTEM - Matches style.css */
+        .global-hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10001;
+            /* Above all overlays */
+        }
+
+        .global-hud>* {
+            pointer-events: auto;
+        }
+
+        /* Logo Styling */
+        .tv-logo {
+            width: 150px;
+            height: auto;
+            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+            transition: transform 0.3s ease;
+        }
+
+        .tv-logo:hover {
+            transform: scale(1.05);
+        }
+
+        /* Timer Styling */
+        .tv-timer {
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #FFAA00;
+            color: #FFFF55;
+            padding: 10px 15px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .tv-timer span {
+            display: inline-block;
+            min-width: 20px;
+            text-align: center;
+        }
+
+
+
+        /* SHAKE ANIMATION */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translate(-50%, -50%) translateX(-12px);
+            }
+
+            40%,
+            80% {
+                transform: translate(-50%, -50%) translateX(12px);
+            }
+        }
+
+        /* RESPONSIVE */
+        @media(max-width:480px) {
+            .global-hud {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            .tv-logo {
+                width: 100px;
+            }
+
+            .tv-timer {
+                font-size: 0.7rem;
+                padding: 8px 12px;
+                border-width: 2px;
+            }
+
+            .otp-box {
+                width: 42px;
+                height: 55px;
+                font-size: 0.9rem;
+            }
+
+            .otp-container {
+                gap: 8px;
+            }
+
+            .glass-container {
+                width: 95vw;
+                padding: 2rem 1rem;
+            }
+
+            .tv-logo {
+                width: 100px;
+            }
+
+            .tv-timer {
+                font-size: 0.8rem;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Global HUD: Logo (Left) + Timer (Right) -->
+    <div class="global-hud">
+        <a href="login.html">
+            <img src="images/logo.png" alt="Pirates of Minecraft" class="tv-logo">
+        </a>
+        <div id="hud-timer-slot">
+            <div id="client-timer-display" class="tv-timer" style="display: none;">
+                <span id="ct-h">00</span>:<span id="ct-m">00</span>:<span id="ct-s">00</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="background-layer move-cinematic"></div>
+    <!-- Scanner sequence removed for constant panel display -->
+
+    <div class="glass-container" id="lensView">
+        <!-- Minecraft 3D Details -->
+        <div class="mc-edge mc-edge-t"></div>
+        <div class="mc-edge mc-edge-b"></div>
+        <div class="mc-edge mc-edge-l"></div>
+        <div class="mc-edge mc-edge-r"></div>
+        <div class="mc-bolt bolt-tl"></div>
+        <div class="mc-bolt bolt-tr"></div>
+        <div class="mc-bolt bolt-bl"></div>
+        <div class="mc-bolt bolt-br"></div>
+
+
+        <div class="panel-title">
+            ANCIENT CREW<br>
+            <span style="font-size: 0.6rem; color: #aaa;">IDENTITY VERIFICATION</span>
+        </div>
+
+        <div class="otp-container">
+            <input type="text" maxlength="1" class="otp-box" oninput="moveToNext(this,0)"
+                onkeydown="handleBackspace(event,0)">
+            <input type="text" maxlength="1" class="otp-box" oninput="moveToNext(this,1)"
+                onkeydown="handleBackspace(event,1)">
+            <input type="text" maxlength="1" class="otp-box" oninput="moveToNext(this,2)"
+                onkeydown="handleBackspace(event,2)">
+            <input type="text" maxlength="1" class="otp-box" oninput="moveToNext(this,3)"
+                onkeydown="handleBackspace(event,3)">
+            <input type="text" maxlength="1" class="otp-box" oninput="moveToNext(this,4)"
+                onkeydown="handleBackspace(event,4)">
+            <input type="text" maxlength="1" class="otp-box" oninput="moveToNext(this,5)"
+                onkeydown="handleBackspace(event,5)">
+        </div>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        // 1. Particle System
+        function createParticles() {
+            const field = document.getElementById('particleField');
+            if (!field) return;
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 4 + 2;
+                p.style.width = size + 'px';
+                p.style.height = size + 'px';
+                p.style.left = Math.random() * 100 + 'vw';
+                p.style.top = Math.random() * 100 + 'vh';
+                p.style.animationDelay = Math.random() * 15 + 's';
+                p.style.opacity = Math.random();
+                field.appendChild(p);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+
+            // 1. Restore Cinematic Background Image
+            const bgLayer = document.querySelector('.background-layer');
+            if (bgLayer) {
+                bgLayer.style.backgroundImage = "url('images/door%20(2).png')";
+                bgLayer.style.backgroundSize = 'cover';
+                bgLayer.style.backgroundRepeat = 'no-repeat';
+                bgLayer.style.backgroundPosition = 'center center';
+                bgLayer.style.filter = 'saturate(1.1) contrast(1.05) brightness(1.0)';
+                bgLayer.style.opacity = '1';
+            }
+
+            // 2. Apply Minecraft Block Theme to the Vault Panel ("Brown Area")
+            const glassPanel = document.querySelector('.glass-container');
+            if (glassPanel) {
+                const glassStyle = createMinecraftBlockStyle('rgba(35, 25, 15, 0.95)', 'rgba(25, 15, 5, 0.98)', '#D4AF37');
+                glassPanel.style.backgroundImage = glassStyle.backgroundImage;
+                glassPanel.style.border = '8px solid transparent';
+                glassPanel.style.borderImage = glassStyle.borderImage;
+                glassPanel.style.backgroundSize = '64px 64px';
+                glassPanel.style.imageRendering = 'pixelated';
+            }
+
+            // 3. Apply Theme to OTP Boxes
+            const otpBoxes = document.querySelectorAll('.otp-box');
+            if (otpBoxes.length > 0) {
+                const boxStyle = createMinecraftBlockStyle('#0a0a0a', '#1a1a1a', '#3a3a3a');
+                otpBoxes.forEach(box => {
+                    box.style.backgroundImage = boxStyle.backgroundImage;
+                    box.style.border = '4px solid transparent';
+                    box.style.borderImage = boxStyle.borderImage;
+                    box.style.backgroundSize = '32px 32px';
+                    box.style.imageRendering = 'pixelated';
+                });
+            }
+
+            // Start focused immediately for constant display
+            const otpInputs = document.querySelectorAll('.otp-box');
+            if (otpInputs.length > 0) otpInputs[0].focus();
+        });
+
+        /* INPUT NAVIGATION */
+        function moveToNext(input, index) {
+            input.value = input.value.toUpperCase();
+            const inputs = document.querySelectorAll('.otp-box');
+
+            // Interaction feedback
+            input.style.borderColor = '#D4AF37';
+
+            if (input.value.length === 1 && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+            if (index === inputs.length - 1 && input.value !== "") {
+                verifyCode();
+            }
+        }
+
+        function handleBackspace(e, index) {
+            const inputs = document.querySelectorAll('.otp-box');
+            if (e.key === "Backspace" && inputs[index].value === "" && index > 0) {
+                inputs[index - 1].focus();
+            }
+        }
+
+        /* VERIFY LOGIC */
+        function verifyCode() {
+            const inputs = document.querySelectorAll('.otp-box');
+            let inputCode = "";
+            inputs.forEach(i => inputCode += i.value);
+            inputCode = inputCode.trim().toUpperCase();
+
+            if (inputCode.length < 6) return;
+
+            // Default fallback
+            let targetCode = "CM2432";
+            const masterKey = "SKULL6";
+
+            // Calculation Logic: CrewID + "C" + (CrewID - 7)
+            const savedState = localStorage.getItem('pirateState');
+            if (savedState) {
+                const parsed = JSON.parse(savedState);
+                if (parsed.teamData) {
+                    const rawID = parsed.teamData.crewid || parsed.teamData.crewID || parsed.teamData.id;
+                    if (rawID) {
+                        const idNum = parseInt(rawID);
+                        const idStr = rawID.toString();
+                        let calcVal = idNum - 7;
+
+                        // Example: 101 -> 101C94
+                        targetCode = idStr + "C" + calcVal.toString();
+                        targetCode = targetCode.toUpperCase();
+                    }
+                }
+            }
+
+            console.log("Verifying:", inputCode, "| Expected:", targetCode);
+
+            if (inputCode === targetCode || inputCode === masterKey) {
+                inputs.forEach(i => i.classList.add('success'));
+
+                setTimeout(() => {
+                    const savedMeme = localStorage.getItem('lastScannedMeme');
+                    const savedLogic = localStorage.getItem('lastScannedLogic');
+
+                    if (savedMeme) {
+                        try {
+                            const memeObj = JSON.parse(savedMeme);
+                            localStorage.setItem('pirateMeme', memeObj.yytlink || memeObj.yt_link || "");
+                            localStorage.setItem('pirateMemeStart', memeObj.start || 0);
+                            localStorage.setItem('pirateMemeEnd', memeObj.end || 0);
+                            localStorage.removeItem('lastScannedMeme'); // Cleanup
+                            window.location.replace('meme.html');
+                        } catch (e) {
+                            console.error("Meme parse error", e);
+                            window.location.replace('qr.html');
+                        }
+                    } else if (savedLogic) {
+                        try {
+                            const logicObj = JSON.parse(savedLogic);
+                            localStorage.setItem('targetLogicId', logicObj.queid || "");
+                            localStorage.removeItem('lastScannedLogic'); // Cleanup
+                            window.location.replace('logical.html');
+                        } catch (e) {
+                            console.error("Logic parse error", e);
+                            window.location.replace('qr.html');
+                        }
+                    } else {
+                        window.location.replace('displaycrew.html');
+                    }
+                }, 800);
+
+            } else {
+                const card = document.getElementById('lensView');
+                card.style.animation = 'none';
+                card.offsetHeight;
+                card.style.animation = 'shake 0.4s ease';
+
+                inputs.forEach(i => {
+                    i.classList.add('error');
+                    setTimeout(() => {
+                        i.value = '';
+                        i.classList.remove('error');
+                        i.style.borderColor = '#3a3a3a';
+                    }, 600);
+                });
+
+                setTimeout(() => {
+                    inputs[0].focus();
+                }, 700);
+            }
+        }
+
+        // --- Client Timer Sync Logic ---
+        // NOTE: Timer logic has been moved to global.js for optimization
+        // This function is kept here for backward compatibility but calls the global one
+        function initClientTimer() {
+            // Timer is now handled by global.js injectGlobalHUD()
+            console.log('Timer initialization delegated to global.js');
+        }
+
+        // Initialize timer on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Global.js handles timer initialization
+        });
+    </script>
+</body>
+
+</html>

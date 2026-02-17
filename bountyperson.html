@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>Bounty Pirates - Target Acquired</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Press Start 2P', monospace;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* FULL SCREEN SCENERY BACKGROUND */
+        .scenery-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('images/bounty.png') no-repeat center center/cover;
+            z-index: 1;
+            cursor: pointer;
+        }
+
+
+        /* PERSPECTIVE WRAPPER & POSTER STYLES MERGED BELOW */
+
+        /* WANTED POSTER DETAILS */
+        .wanted-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(1.1rem, 5vw, 1.5rem);
+            font-weight: normal;
+            color: #8b0000;
+            text-align: center;
+            border-bottom: 3px solid #550000;
+            padding-bottom: 10px;
+            line-height: 1.2;
+        }
+
+        .bounty-image {
+            width: 100%;
+            aspect-ratio: 1;
+            margin: 20px 0;
+            border: 6px solid #2a1810;
+            /* Clean, high-contrast dark border */
+            background: #000 url('images/A.png') no-repeat center center/cover;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            position: relative;
+            z-index: 2;
+        }
+
+
+
+        .reward {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            text-align: center;
+            color: #550000;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+
+        .captain-name {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.5rem, 3vw, 0.65rem);
+            color: #3E2723;
+            text-align: center;
+            text-transform: uppercase;
+            margin: 10px auto;
+            padding: 8px;
+            border-top: 3px double #3e2723;
+            border-bottom: 3px double #3e2723;
+            background: rgba(139, 69, 19, 0.1);
+            width: 100%;
+            text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.5);
+            transform: rotate(-0.5deg);
+            line-height: 1.4;
+            white-space: normal;
+        }
+
+        .crew-members {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.45rem;
+            color: #550000;
+            text-align: center;
+            margin-top: 5px;
+            line-height: 1.6;
+            width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .crew-label {
+            font-size: 0.35rem;
+            color: #8B4513;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+            opacity: 0.7;
+        }
+
+        body.zoomed .wanted-poster {
+            opacity: 1;
+            transform: scale(1) rotate(-3deg);
+            pointer-events: auto;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9);
+        }
+
+        @keyframes posterLight {
+            from {
+                box-shadow: 0 0 30px rgba(255, 170, 0, 0.8);
+            }
+
+            to {
+                box-shadow: 0 0 60px rgba(255, 200, 0, 0.9);
+            }
+        }
+
+        /* PERSPECTIVE WRAPPER (Keeps poster perfectly centered) */
+        .poster-screen-wrapper {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: none;
+            perspective: 1000px;
+            padding: 20px;
+        }
+
+        .wanted-poster {
+            width: 100%;
+            max-width: 320px;
+            aspect-ratio: 1 / 1.45;
+            background: #fff8dc;
+            padding: 25px 20px;
+            opacity: 0;
+            transform: scale(0.1) rotate(20deg);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+
+            /* HIGH-DETAIL JAGGED TEAR */
+            clip-path: polygon(2% 2%, 15% 1%, 30% 3%, 45% 1%, 60% 2%, 75% 1%, 90% 3%, 98% 1%,
+                    97% 10%, 99% 20%, 96% 30%, 98% 40%, 95% 50%, 99% 60%, 96% 75%, 98% 85%, 97% 95%, 98% 99%,
+                    90% 98%, 75% 99%, 60% 97%, 45% 99%, 30% 97%, 15% 99%, 2% 98%,
+                    1% 90%, 3% 75%, 0% 60%, 2% 45%, 1% 30%, 3% 15%, 1% 5%);
+
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+            background-image:
+                url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.05"/></svg>'),
+                linear-gradient(rgba(255, 248, 220, 1), rgba(255, 248, 220, 1));
+        }
+
+        body.zoomed .wanted-poster {
+            opacity: 1;
+            transform: scale(1) rotate(-3deg);
+            pointer-events: auto;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9);
+        }
+
+        /* 3D Parallax support for poster (nested) */
+        .poster-inner-content {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-height: 600px) {
+            .wanted-poster {
+                max-width: 260px;
+                padding: 15px;
+            }
+
+            .wanted-title {
+                font-size: 1rem;
+            }
+
+            .bounty-image {
+                margin: 10px 0;
+            }
+        }
+
+
+
+
+        /* Interaction Prompt */
+        .interaction-prompt {
+            position: fixed;
+            bottom: clamp(1.5rem, 5vh, 2.5rem);
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.6rem, 3vw, 0.8rem);
+            z-index: 50;
+            text-shadow: 0.125rem 0.125rem 0 #000;
+            pointer-events: none;
+            opacity: 0.8;
+            animation: pulseText 2s infinite;
+        }
+
+        @keyframes pulseText {
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+                text-shadow: 0 0 10px #FFD700;
+            }
+        }
+
+        /* --- OVERLAY REMOVAL & PERFECT ALIGNMENT --- */
+        body::before,
+        body::after {
+            display: none !important;
+            content: none !important;
+        }
+
+        .scenery-bg {
+            filter: none !important;
+            animation: none !important;
+            /* Stop movement to keep alignment static if needed, or keep for cinematic */
+        }
+
+
+
+        .interaction-prompt {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body id="body">
+    <div class="scenery-bg move-cinematic" id="scenery" onclick="zoomPoster()"></div>
+
+    <!-- Interaction Prompt -->
+    <div class="interaction-prompt">TAP TO REVEAL</div>
+
+    <!-- The Wanted Poster Wrapper -->
+    <div class="poster-screen-wrapper">
+        <div class="wanted-poster">
+            <div class="wanted-title">WANTED</div>
+            <div class="bounty-image"></div>
+            <div class="captain-name">Unknown</div>
+        </div>
+    </div>
+
+    <script src="global.js" defer></script>
+    <script>
+        // Wait for global.js to load before applying Minecraft textures
+        document.addEventListener('DOMContentLoaded', function () {
+            // Small delay to ensure global.js is fully loaded
+            setTimeout(applyBountyPageStyles, 100);
+        });
+
+        async function applyBountyPageStyles() {
+            if (window.initGame) initGame();
+
+            if (gameState.teamData) {
+                // DYNAMIC UPDATE: Fetch latest data from crew.json to ensure photo/name changes appear immediately
+                try {
+                    const response = await fetch('crew.json');
+                    if (response.ok) {
+                        const crews = await response.json();
+                        // Find our crew by ID to get the freshest data
+                        const freshData = crews.find(c => c.crewid === gameState.teamData.crewid);
+                        if (freshData) {
+                            console.log('Found fresh data:', freshData);
+                            // Update our local state with the new info
+                            gameState.teamData.captain = freshData.captain;
+                            gameState.teamData.photo = freshData.bounty_photo;
+                            gameState.teamData.crewname = freshData.crewname;
+                            saveGame(); // Save it for other pages
+                        }
+                    }
+                } catch (e) {
+                    console.log('Using saved state (could not fetch crew.json):', e);
+                }
+
+                const image = document.querySelector('.bounty-image');
+
+                // Set Captain Name
+                const captainName = gameState.teamData.captain || "Unknown Pirate";
+                document.querySelector('.captain-name').innerText = captainName;
+
+                // Set Crew Photo (if it exists, otherwise fallback to A.png)
+                if (gameState.teamData.photo) {
+                    const photoPath = gameState.teamData.photo.startsWith('http') ?
+                        gameState.teamData.photo :
+                        'images/' + gameState.teamData.photo;
+
+                    console.log('Loading bounty image from:', photoPath); // Debug log
+                    image.style.backgroundImage = `url('${photoPath}'), url('images/A.png')`;
+                    image.style.backgroundSize = 'cover';
+                }
+            }
+
+            // Apply Minecraft Block Style to Wanted Poster (Texture Only)
+            if (typeof createMinecraftBlockStyle === 'function') {
+                const poster = document.querySelector('.wanted-poster');
+                // Generate 3-shade texture: Main(Beige), Darker(Tan), Border(unused)
+                const tex = createMinecraftBlockStyle('#fff8dc', '#f0e68c', '#8B4513');
+
+                // Composite: Noise > Gradient > Block Texture
+                poster.style.backgroundImage = `
+                    url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.05"/></svg>'),
+                    linear-gradient(rgba(255, 248, 220, 1), rgba(255, 248, 220, 1)),
+                    ${tex.backgroundImage}
+                `;
+                // Set sizes for each layer
+                poster.style.backgroundSize = `100% 100%, 100% 100%, 64px 64px`;
+                poster.style.backgroundBlendMode = 'multiply, normal, normal'; // Blend noise slightly
+                poster.style.imageRendering = 'pixelated'; // Ensure pixelated rendering
+            } else {
+                console.warn('createMinecraftBlockStyle function not found - Minecraft texture not applied');
+            }
+        }
+
+        function zoomPoster() {
+            const body = document.getElementById('body');
+
+            if (body.classList.contains('zoomed')) return;
+
+            body.classList.add('zoomed');
+
+            // Hide prompt
+            const prompt = document.querySelector('.interaction-prompt');
+            if (prompt) prompt.style.display = 'none';
+
+            // Play success sound
+            if (window.playSound) window.playSound('success');
+        }
+    </script>
+</body>
+
+</html>

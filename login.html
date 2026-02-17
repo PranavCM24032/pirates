@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>Bounty Pirates - Crew Registration</title>
+    <!-- Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* RESET & BASE */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            /* ENABLE SCROLLING FOR MOBILE */
+            font-family: 'Press Start 2P', cursive;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background: #000 url('images/login.png') no-repeat center center/cover;
+            z-index: -10;
+        }
+
+        /* Atmospheric Overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+            z-index: -1;
+        }
+
+        .content-wrapper {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        .grand-title {
+            font-size: clamp(1.1rem, 6vw, 1.8rem);
+            text-align: center;
+            color: #FFAA00;
+            text-shadow: 4px 4px 0 #000;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.6rem;
+            color: #55FF55;
+            text-align: center;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        /* ------------------------------------------------------------ */
+        /* ⭐ ULTIMATE AESTHETIC WOOD BLOCK — CENTER OF ATTRACTION ⭐   */
+        /* ------------------------------------------------------------ */
+        .login-container {
+            position: relative;
+            width: 100%;
+            padding: 34px 32px;
+
+            /* Rich polished wood gradient */
+            background:
+                repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.15) 0px, rgba(0, 0, 0, 0.15) 2px, transparent 2px, transparent 44px),
+                repeating-linear-gradient(transparent 0px, transparent 3px, rgba(0, 0, 0, 0.08) 3px, rgba(0, 0, 0, 0.08) 6px),
+                linear-gradient(to bottom, #9A5A24, #6B3412 60%, #4A220A);
+
+            /* Stronger 3D Border */
+            border: 5px solid #271306;
+            border-radius: 6px;
+
+            /* PREMIUM CINEMATIC GLOW & BEVEL */
+            box-shadow:
+                0 40px 80px rgba(0, 0, 0, 0.9),
+                /* Deep drop shadow */
+                0 0 0 4px #271306,
+                /* Thick outline */
+                inset 8px 8px 0 rgba(255, 255, 255, 0.15),
+                /* Top-left highlight bevel */
+                inset -8px -8px 0 rgba(0, 0, 0, 0.4),
+                /* Bottom-right shadow bevel */
+                inset 0 0 50px rgba(0, 0, 0, 0.6);
+            /* Deep inner pit */
+
+            /* Sexy floating animation */
+            animation: woodFloat 4.2s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+
+        /* Inner Bevel Detail */
+        .login-container::after {
+            content: "";
+            position: absolute;
+            inset: 8px;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            border-top-color: rgba(255, 255, 255, 0.1);
+            border-left-color: rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+        }
+
+        /* GOLD RIM LIGHT EDGE */
+        .login-container::before {
+            content: "";
+            position: absolute;
+            inset: -8px;
+            border-radius: 8px;
+            background: radial-gradient(circle at 50% -30%, rgba(255, 200, 90, 0.45), transparent 80%);
+            pointer-events: none;
+            z-index: -2;
+        }
+
+        /* RELIC DECORATIONS (Clock, Diamond, Skull) */
+        .relic {
+            position: absolute;
+            font-size: 1.6rem;
+            filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.8));
+            z-index: 10;
+            animation: relicFloat 4s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+
+        .relic-diamond {
+            top: -20px;
+            left: -20px;
+            animation-delay: 0.2s;
+            font-size: 2.2rem;
+            filter: drop-shadow(0 0 15px rgba(0, 180, 255, 0.6));
+        }
+
+        .relic-anchor {
+            top: -20px;
+            right: -20px;
+            animation-delay: 0.7s;
+            font-size: 2.2rem;
+            filter: drop-shadow(0 0 15px rgba(200, 200, 200, 0.4));
+        }
+
+        .relic-gold {
+            bottom: -25px;
+            left: -25px;
+            animation-delay: 1.2s;
+        }
+
+        .relic-compass {
+            bottom: -25px;
+            right: -25px;
+            animation-delay: 0.8s;
+        }
+
+        @keyframes relicFloat {
+            0% {
+                transform: translateY(0) rotate(-10deg) scale(1);
+            }
+
+            100% {
+                transform: translateY(-10px) rotate(10deg) scale(1.1);
+            }
+        }
+
+        /* Edges darker and smoother */
+        .wood-edge {
+            position: absolute;
+            background: #4A260C;
+            border: 2px solid #1E0E05;
+        }
+
+        .edge-top {
+            top: -6px;
+            left: 10px;
+            right: 10px;
+            height: 6px;
+            border-bottom: none;
+        }
+
+        .edge-bottom {
+            bottom: -6px;
+            left: 10px;
+            right: 10px;
+            height: 6px;
+            border-top: none;
+        }
+
+        .edge-left {
+            left: -6px;
+            top: 10px;
+            bottom: 10px;
+            width: 6px;
+            border-right: none;
+        }
+
+        .edge-right {
+            right: -6px;
+            top: 10px;
+            bottom: 10px;
+            width: 6px;
+            border-left: none;
+        }
+
+        /* Corners now classy & deeper */
+        .corner-block {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #271306;
+            border: 2px solid #130903;
+            box-shadow: 0 0 9px rgba(0, 0, 0, 0.9);
+            z-index: 5;
+        }
+
+        .tl {
+            top: -10px;
+            left: -10px;
+        }
+
+        .tr {
+            top: -10px;
+            right: -10px;
+        }
+
+        .bl {
+            bottom: -10px;
+            left: -10px;
+        }
+
+        .br {
+            bottom: -10px;
+            right: -10px;
+        }
+
+        .pirate-skull {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            color: #FFAA00;
+            text-shadow: 2px 2px 0 #000;
+            z-index: 6;
+        }
+
+        /* FORM STYLING */
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .pirate-label {
+            display: block;
+            color: #FFAA00;
+            font-size: 0.55rem;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .pirate-field {
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            border: 3px solid #5A2D0C;
+            color: #55FF55;
+            font-size: 0.65rem;
+            font-family: 'Press Start 2P', cursive;
+            outline: none;
+        }
+
+        .pirate-field:focus {
+            border-color: #FFAA00;
+            box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+        }
+
+        /* PREMIUM GOLD BUTTONS */
+        .pirate-submit {
+            background: linear-gradient(to bottom, #FFAA00, #B8860B);
+            border: 3px solid #271306;
+            color: #000;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.2);
+            box-shadow: 0 5px 0 #4A220A, 0 10px 20px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .pirate-submit:hover {
+            filter: brightness(1.1);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 0 #4A220A, 0 15px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .pirate-submit:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #4A220A;
+        }
+
+        /* LUXURY INPUT FIELDS */
+        .pirate-field {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #4A220A;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .pirate-field:focus {
+            border-color: #FFAA00;
+            background: rgba(25, 15, 5, 0.95);
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.3), inset 0 2px 10px rgba(0, 0, 0, 0.8);
+            color: #fff;
+        }
+
+        /* PAGE ENTRY ANIMATION */
+        .content-wrapper {
+            animation: grandEntry 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes grandEntry {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ZERO-SCROLL RESPONSIVE */
+        @media (max-height: 700px) {
+            .content-wrapper {
+                gap: 5px;
+            }
+
+            .login-container {
+                padding: 20px;
+                margin-top: 10px;
+            }
+
+            .grand-title {
+                font-size: 1.2rem;
+            }
+
+            .logo-img {
+                max-width: 200px;
+            }
+
+            .subtitle {
+                display: none;
+            }
+        }
+
+        @media (max-height: 550px) {
+            .logo-img {
+                max-width: 150px;
+            }
+
+            .form-group {
+                margin-bottom: 6px;
+            }
+
+            .pirate-submit {
+                padding: 8px;
+                font-size: 0.6rem;
+                box-shadow: 0 3px 0 #4A220A;
+            }
+
+            .pirate-skull {
+                display: none;
+            }
+        }
+
+        /* BACK BUTTON */
+        .back-btn {
+            position: fixed;
+            bottom: 14px;
+            left: 14px;
+            padding: 6px 10px;
+            background: #5D4037;
+            border: 2px solid #3E2723;
+            color: #FFAA00;
+            font-size: 0.45rem;
+            text-decoration: none;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 3px 0 #271306;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 0 #271306;
+            filter: brightness(1.1);
+        }
+
+        .back-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 0 #271306;
+        }
+    </style>
+</head>
+
+</head>
+
+<body class="overflow-y-auto">
+    <div class="background-layer move-cinematic"></div>
+
+    <a href="displaycrew.html" class="back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        BACK
+    </a>
+
+    <div class="content-wrapper">
+        <h1 class="grand-title">CREW REGISTRATION</h1>
+        <p class="subtitle">JOIN THE HUNT</p>
+
+        <img src="images/logo.png" alt="Bounty Pirates" class="w-full max-w-[280px] h-auto my-2 logo-img">
+
+        <div class="login-container">
+            <!-- 3D Edges -->
+            <div class="wood-edge edge-top"></div>
+            <div class="wood-edge edge-bottom"></div>
+            <div class="wood-edge edge-left"></div>
+            <div class="wood-edge edge-right"></div>
+            <!-- Corners -->
+            <div class="corner-block tl"></div>
+            <div class="corner-block tr"></div>
+            <div class="corner-block bl"></div>
+            <div class="corner-block br"></div>
+
+            <div class="pirate-skull">☠️</div>
+
+            <!-- Decorative Relics -->
+            <div class="relic relic-diamond">💎</div>
+            <div class="relic relic-anchor">⚓</div>
+            <div class="relic relic-gold">💰</div>
+            <div class="relic relic-compass">🧭</div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="pirate-label">CREW NAME</label>
+                    <input type="text" id="crewName" class="pirate-field" placeholder="The Black Pearl" required
+                        autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="pirate-label">PASSWORD</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" class="pirate-field pr-12" placeholder="••••••••" required
+                            autocomplete="off">
+                        <span class="toggle-password" id="togglePassword">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="#FFAA00" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="pirate-label">MISSION LEVEL</label>
+                    <select id="levelSelect" class="pirate-field bg-black text-[0.55rem]">
+                        <option value="1">LEVEL 1 - THE INITIATION</option>
+                        <option value="2">LEVEL 2 - ANCIENT RIDDLES</option>
+                        <option value="3">LEVEL 3 - RACE AGAINST TIME</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="pirate-submit">JOIN THE HUNT →</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="global.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const nameInput = document.getElementById('crewName');
+            const passwordInput = document.getElementById('password');
+            const togglePassword = document.getElementById('togglePassword');
+            const loginForm = document.getElementById('loginForm');
+
+            // Handle autofill
+            const autofill = localStorage.getItem('autofill_crew');
+            if (autofill) {
+                nameInput.value = autofill;
+                localStorage.removeItem('autofill_crew');
+                setTimeout(() => passwordInput.focus(), 400);
+            }
+
+            // Password Toggle Logic
+            togglePassword.addEventListener('click', () => {
+                const isPass = passwordInput.type === 'password';
+                passwordInput.type = isPass ? 'text' : 'password';
+                const eyeIcon = togglePassword.querySelector('svg');
+                const eyeClosed = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+                const eyeOpen = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+                if (isPass) {
+                    eyeIcon.innerHTML = eyeClosed;
+                } else {
+                    eyeIcon.innerHTML = eyeOpen;
+                }
+            });
+
+            // Credential Logic
+            function generateCred(id) {
+                const last2 = parseInt(id.slice(-2));
+                let val = last2 - 7;
+                if (val < 0) val += 100;
+                return id + 'C' + val.toString().padStart(2, '0');
+            }
+
+            // Load Data
+            let crews = [];
+            try {
+                const res = await fetch('crew.json');
+                if (res.ok) crews = await res.json();
+            } catch (e) {
+                console.error("Fetch failed");
+            }
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = nameInput.value.trim();
+                const pass = passwordInput.value.trim();
+                const level = parseInt(document.getElementById('levelSelect').value);
+
+                const found = crews.find(c =>
+                    c.crewname.toLowerCase() === name.toLowerCase() &&
+                    c.password === pass
+                );
+
+                if (found) {
+                    gameState.teamData = {
+                        crewid: found.crewid,
+                        crewname: found.crewname,
+                        captain: found.captain,
+                        members: found.members,
+                        photo: found.bounty_photo,
+                        verificationCredential: generateCred(found.crewid)
+                    };
+                    gameState.currentLevel = level;
+                    saveGame();
+
+                    if (window.playSound) playSound('level_up');
+
+                    setTimeout(() => navigateNext(), 2200);
+                } else {
+                    if (window.playSound) playSound('error');
+                    alert("INVALID CREDENTIALS!");
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
+

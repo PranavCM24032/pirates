@@ -1,0 +1,601 @@
+[
+    {
+        "crewid": "101",
+        "crewname": "The Black Pearl",
+        "password": "123",
+        "captain": "Captain Anushka Pawar",
+        "members": [
+            "First Mate Rohan",
+            "Navigator Arjun",
+            "Gunner Priya"
+        ],
+        "bounty_photo": "B.png"
+    },
+    {
+        "crewid": "102",
+        "crewname": "The Flying Dutchman",
+        "password": "pass102",
+        "captain": "Captain Kalash Shrikhande",
+        "members": [
+            "Ankit",
+            "Suresh"
+        ],
+        "bounty_photo": "A.png"
+    },
+    {
+        "crewid": "103",
+        "crewname": "Queen Anne's Revenge",
+        "password": "pass103",
+        "captain": "Blackbeard",
+        "members": [
+            "Jack",
+            "Will",
+            "Elizabeth"
+        ],
+        "bounty_photo": "beard_photo.png"
+    },
+    {
+        "crewid": "104",
+        "crewname": "Diamond Seekers",
+        "password": "pass104",
+        "captain": "Miner Mike",
+        "members": [
+            "Steve",
+            "Alex",
+            "Noob"
+        ],
+        "bounty_photo": "diamond.png"
+    },
+    {
+        "crewid": "105",
+        "crewname": "Nether Raiders",
+        "password": "pass105",
+        "captain": "Piglin King",
+        "members": [
+            "Blaze",
+            "Ghast",
+            "Wither"
+        ],
+        "bounty_photo": "nether.png"
+    },
+    {
+        "crewid": "106",
+        "crewname": "Ocean Explorers",
+        "password": "pass106",
+        "captain": "Trident Tim",
+        "members": [
+            "Dolphin",
+            "Guardian",
+            "Squid"
+        ],
+        "bounty_photo": "ocean.png"
+    },
+    {
+        "crewid": "107",
+        "crewname": "Redstone Pirates",
+        "password": "pass107",
+        "captain": "Engineer Ed",
+        "members": [
+            "Lever",
+            "Piston",
+            "Repeater"
+        ],
+        "bounty_photo": "redstone.png"
+    },
+    {
+        "crewid": "108",
+        "crewname": "Ender Dragons",
+        "password": "pass108",
+        "captain": "Enderman Eric",
+        "members": [
+            "Pearlie",
+            "Teleport",
+            "Void"
+        ],
+        "bounty_photo": "ender.png"
+    },
+    {
+        "crewid": "109",
+        "crewname": "Iron Golems",
+        "password": "pass109",
+        "captain": "Metal Matt",
+        "members": [
+            "Rose",
+            "Ingot",
+            "Heavy"
+        ],
+        "bounty_photo": "iron.png"
+    },
+    {
+        "crewid": "110",
+        "crewname": "Skeleton Archers",
+        "password": "pass110",
+        "captain": "Bone Bow",
+        "members": [
+            "Arrow",
+            "Quiver",
+            "Rib"
+        ],
+        "bounty_photo": "skeleton.png"
+    },
+    {
+        "crewid": "111",
+        "crewname": "Creeping Creepers",
+        "password": "pass111",
+        "captain": "TNT Tom",
+        "members": [
+            "Boom",
+            "Sizz",
+            "Blast"
+        ],
+        "bounty_photo": "creeper.png"
+    },
+    {
+        "crewid": "112",
+        "crewname": "Zombie Horde",
+        "password": "pass112",
+        "captain": "Brainy Bill",
+        "members": [
+            "Rot",
+            "Green",
+            "Slow"
+        ],
+        "bounty_photo": "zombie.png"
+    },
+    {
+        "crewid": "113",
+        "crewname": "Spider Riders",
+        "password": "pass113",
+        "captain": "Web Wally",
+        "members": [
+            "Silk",
+            "Eight",
+            "Climb"
+        ],
+        "bounty_photo": "spider.png"
+    },
+    {
+        "crewid": "114",
+        "crewname": "Phantom Flyers",
+        "password": "pass114",
+        "captain": "Night Wing",
+        "members": [
+            "Swoop",
+            "Scream",
+            "Sky"
+        ],
+        "bounty_photo": "phantom.png"
+    },
+    {
+        "crewid": "115",
+        "crewname": "Witch's Brew",
+        "password": "pass115",
+        "captain": "Potion Pam",
+        "members": [
+            "Splash",
+            "Healing",
+            "Harm"
+        ],
+        "bounty_photo": "witch.png"
+    },
+    {
+        "crewid": "116",
+        "crewname": "Slime Squishers",
+        "password": "pass116",
+        "captain": "Sticky Stan",
+        "members": [
+            "Bounce",
+            "Jello",
+            "Greenish"
+        ],
+        "bounty_photo": "slime.png"
+    },
+    {
+        "crewid": "117",
+        "crewname": "Magma Cubes",
+        "password": "pass117",
+        "captain": "Hot Henry",
+        "members": [
+            "Lava",
+            "Fire",
+            "Burn"
+        ],
+        "bounty_photo": "magma.png"
+    },
+    {
+        "crewid": "118",
+        "crewname": "Shulker Shelters",
+        "password": "pass118",
+        "captain": "Boxy Ben",
+        "members": [
+            "Float",
+            "Lid",
+            "Purple"
+        ],
+        "bounty_photo": "shulker.png"
+    },
+    {
+        "crewid": "119",
+        "crewname": "Drowned Mariners",
+        "password": "pass119",
+        "captain": "Sunken Sam",
+        "members": [
+            "Coral",
+            "Shell",
+            "Trident"
+        ],
+        "bounty_photo": "drowned.png"
+    },
+    {
+        "crewid": "120",
+        "crewname": "Villager Traders",
+        "password": "pass120",
+        "captain": "Emerald Emmy",
+        "members": [
+            "Wheat",
+            "Bread",
+            "Map"
+        ],
+        "bounty_photo": "villager.png"
+    },
+    {
+        "crewid": "121",
+        "crewname": "Illager Raiders",
+        "password": "pass121",
+        "captain": "Vindicator Vic",
+        "members": [
+            "Axe",
+            "Banner",
+            "Ravager"
+        ],
+        "bounty_photo": "illager.png"
+    },
+    {
+        "crewid": "122",
+        "crewname": "Evoker Spirits",
+        "password": "pass122",
+        "captain": "Vex Val",
+        "members": [
+            "Fang",
+            "Magic",
+            "Totem"
+        ],
+        "bounty_photo": "evoker.png"
+    },
+    {
+        "crewid": "123",
+        "crewname": "Axolotl Army",
+        "password": "pass123",
+        "captain": "Pinky Paul",
+        "members": [
+            "Water",
+            "Mud",
+            "Blue"
+        ],
+        "bounty_photo": "axolotl.png"
+    },
+    {
+        "crewid": "124",
+        "crewname": "Bee Hive",
+        "password": "pass124",
+        "captain": "Honey Holly",
+        "members": [
+            "Sting",
+            "Flower",
+            "Wax"
+        ],
+        "bounty_photo": "bee.png"
+    },
+    {
+        "crewid": "125",
+        "crewname": "Goat Climbers",
+        "password": "pass125",
+        "captain": "Horn Harry",
+        "members": [
+            "Jump",
+            "Mountain",
+            "Scream"
+        ],
+        "bounty_photo": "goat.png"
+    },
+    {
+        "crewid": "126",
+        "crewname": "Panda Rollers",
+        "password": "pass126",
+        "captain": "Bamboo Bob",
+        "members": [
+            "Sleepy",
+            "Lazy",
+            "Hungry"
+        ],
+        "bounty_photo": "panda.png"
+    },
+    {
+        "crewid": "127",
+        "crewname": "Fox Runners",
+        "password": "pass127",
+        "captain": "Berrie Ben",
+        "members": [
+            "Sneak",
+            "Jump",
+            "Tail"
+        ],
+        "bounty_photo": "fox.png"
+    },
+    {
+        "crewid": "128",
+        "crewname": "Wolf Pack",
+        "password": "pass128",
+        "captain": "Doggo Dan",
+        "members": [
+            "Bone",
+            "Bark",
+            "Tame"
+        ],
+        "bounty_photo": "wolf.png"
+    },
+    {
+        "crewid": "129",
+        "crewname": "Parrot Pirates",
+        "password": "pass129",
+        "captain": "Polly Pete",
+        "members": [
+            "Seed",
+            "Fly",
+            "Mimic"
+        ],
+        "bounty_photo": "parrot.png"
+    },
+    {
+        "crewid": "130",
+        "crewname": "Turtle Travelers",
+        "password": "pass130",
+        "captain": "Scute Scott",
+        "members": [
+            "Egg",
+            "Beach",
+            "Shell"
+        ],
+        "bounty_photo": "turtle.png"
+    },
+    {
+        "crewid": "131",
+        "crewname": "Snow Golems",
+        "password": "pass131",
+        "captain": "Frosty Fred",
+        "members": [
+            "Pumpkin",
+            "Snowball",
+            "Cold"
+        ],
+        "bounty_photo": "snow.png"
+    },
+    {
+        "crewid": "132",
+        "crewname": "Strider Walkers",
+        "password": "pass132",
+        "captain": "Lava Larry",
+        "members": [
+            "Warped",
+            "Fungus",
+            "Legs"
+        ],
+        "bounty_photo": "strider.png"
+    },
+    {
+        "crewid": "133",
+        "crewname": "Zoglin Smashers",
+        "password": "pass133",
+        "captain": "Raging Ron",
+        "members": [
+            "Tusk",
+            "Charge",
+            "Angry"
+        ],
+        "bounty_photo": "zoglin.png"
+    },
+    {
+        "crewid": "134",
+        "crewname": "Hoglin Hunters",
+        "password": "pass134",
+        "captain": "Swine Sid",
+        "members": [
+            "Pork",
+            "Leather",
+            "Fear"
+        ],
+        "bounty_photo": "hoglin.png"
+    },
+    {
+        "crewid": "135",
+        "crewname": "Warden Wardens",
+        "password": "pass135",
+        "captain": "Echo Ed",
+        "members": [
+            "Vibration",
+            "Dark",
+            "Sonic"
+        ],
+        "bounty_photo": "warden.png"
+    },
+    {
+        "crewid": "136",
+        "crewname": "Allay Helpers",
+        "password": "pass136",
+        "captain": "Cookie Cal",
+        "members": [
+            "Note",
+            "Music",
+            "Carry"
+        ],
+        "bounty_photo": "allay.png"
+    },
+    {
+        "crewid": "137",
+        "crewname": "Frog Jumpers",
+        "password": "pass137",
+        "captain": "Swampy Sam",
+        "members": [
+            "Tongue",
+            "Lamp",
+            "Lily"
+        ],
+        "bounty_photo": "frog.png"
+    },
+    {
+        "crewid": "138",
+        "crewname": "Tadpole Tails",
+        "password": "pass138",
+        "captain": "Tiny Tim",
+        "members": [
+            "Bucket",
+            "Swim",
+            "Grow"
+        ],
+        "bounty_photo": "tadpole.png"
+    },
+    {
+        "crewid": "139",
+        "crewname": "Camel Caravans",
+        "password": "pass139",
+        "captain": "Desert Dan",
+        "members": [
+            "Hump",
+            "Ride",
+            "Sand"
+        ],
+        "bounty_photo": "camel.png"
+    },
+    {
+        "crewid": "140",
+        "crewname": "Sniffer Sniffers",
+        "password": "pass140",
+        "captain": "Ancient Art",
+        "members": [
+            "Seed",
+            "MOSS",
+            "Dig"
+        ],
+        "bounty_photo": "sniffer.png"
+    },
+    {
+        "crewid": "141",
+        "crewname": "Breeze Blasts",
+        "password": "pass141",
+        "captain": "Windy Will",
+        "members": [
+            "Trial",
+            "Key",
+            "Jump"
+        ],
+        "bounty_photo": "breeze.png"
+    },
+    {
+        "crewid": "142",
+        "crewname": "Crafter Makers",
+        "password": "pass142",
+        "captain": "Auto Al",
+        "members": [
+            "Grid",
+            "Item",
+            "Recipe"
+        ],
+        "bounty_photo": "crafter.png"
+    },
+    {
+        "crewid": "143",
+        "crewname": "Ominous Raiders",
+        "password": "pass143",
+        "captain": "Bad Luck Bob",
+        "members": [
+            "Bottle",
+            "Trial",
+            "Pot"
+        ],
+        "bounty_photo": "ominous.png"
+    },
+    {
+        "crewid": "144",
+        "crewname": "Bogged Bows",
+        "password": "pass144",
+        "captain": "Mossy Mo",
+        "members": [
+            "Poison",
+            "Swamp",
+            "Skull"
+        ],
+        "bounty_photo": "bogged.png"
+    },
+    {
+        "crewid": "145",
+        "crewname": "Copper Cores",
+        "password": "pass145",
+        "captain": "Rusty Rick",
+        "members": [
+            "Bulb",
+            "Grate",
+            "Chiseled"
+        ],
+        "bounty_photo": "copper.png"
+    },
+    {
+        "crewid": "146",
+        "crewname": "Tuff Toughs",
+        "password": "pass146",
+        "captain": "Stone Stu",
+        "members": [
+            "Gray",
+            "Hard",
+            "Bricks"
+        ],
+        "bounty_photo": "tuff.png"
+    },
+    {
+        "crewid": "147",
+        "crewname": "Trial Masters",
+        "password": "pass147",
+        "captain": "Vault Vic",
+        "members": [
+            "Key",
+            "Loot",
+            "Challenge"
+        ],
+        "bounty_photo": "trial.png"
+    },
+    {
+        "crewid": "148",
+        "crewname": "Mace Smashers",
+        "password": "pass148",
+        "captain": "Heavy Hit",
+        "members": [
+            "Breeze",
+            "Rod",
+            "Core"
+        ],
+        "bounty_photo": "mace.png"
+    },
+    {
+        "crewid": "149",
+        "crewname": "Flow Patterns",
+        "password": "pass149",
+        "captain": "Stylish Sy",
+        "members": [
+            "Banner",
+            "Trim",
+            "Armor"
+        ],
+        "bounty_photo": "flow.png"
+    },
+    {
+        "crewid": "150",
+        "crewname": "Bolt Explorers",
+        "password": "pass150",
+        "captain": "Fast Fay",
+        "members": [
+            "Blue",
+            "Light",
+            "Strike"
+        ],
+        "bounty_photo": "bolt.png"
+    }
+]

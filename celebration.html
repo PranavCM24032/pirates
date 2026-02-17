@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>Level Up! - Bounty Hunt</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            image-rendering: pixelated;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+            overflow-y: auto;
+            /* Allow scrolling if content is too tall */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100dvh;
+            /* Use dynamic viewport height */
+            padding: 20px;
+            position: relative;
+        }
+
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background: url('images/celebration.png') no-repeat center center/cover;
+            z-index: -3;
+        }
+
+
+
+
+        .main-msg {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            animation: popText 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popText {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .stats-box {
+            position: relative;
+            z-index: 15;
+            display: flex;
+            gap: 1.25rem;
+            margin-top: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 1s forwards;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.7);
+            border: 0.125rem solid #ffff55;
+            padding: 0.6rem 1rem;
+            text-align: center;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 1rem rgba(255, 255, 85, 0.3);
+        }
+
+        .stat-val {
+            display: block;
+            color: #ffff55;
+            font-size: clamp(0.75rem, 4vw, 1.25rem);
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-label {
+            font-size: 8px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .level-up-text {
+            font-size: clamp(20px, 6vw, 40px);
+            color: #ffff55;
+            text-shadow: 4px 4px 0 #000, 0 0 20px rgba(0, 0, 0, 0.8);
+            margin-bottom: 50px;
+        }
+
+        .btn-simple {
+            position: relative;
+            z-index: 10;
+            background: #55ff55;
+            border: 0.25rem solid #000;
+            box-shadow: inset -0.25rem -0.25rem 0 #00aa00, inset 0.25rem 0.25rem 0 #aaffaa;
+            padding: 1rem 2rem;
+            color: #000;
+            font-size: clamp(0.5rem, 3vw, 0.75rem);
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: transform 0.2s;
+            opacity: 0;
+            animation: fadeIn 1s ease-in 2s forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .btn-simple:hover {
+            transform: scale(1.1);
+        }
+
+        /* Star Particles */
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            animation: starFall linear forwards;
+        }
+
+        @keyframes starFall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-layer move-cinematic"></div>
+
+
+    <div class="main-msg">
+        <h1 class="level-up-text">Winner</h1>
+
+    </div>
+
+    <!-- REWARD STATS -->
+    <div class="stats-box">
+
+    </div>
+
+
+
+
+    <script src="global.js" defer></script>
+    <script>
+        window.onload = function () {
+            if (window.initGame) initGame();
+
+            // Initial burst
+            confetti({
+                particleCount: 200,
+                spread: 90,
+                origin: { y: 0.6 },
+                colors: ['#ffffff', '#ffff55', '#55ff55']
+            });
+
+            launchCelebration();
+            createStars();
+        };
+
+        function launchCelebration() {
+            const end = Date.now() + 30 * 1000;
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#ffaa00'];
+
+            const interval = setInterval(function () {
+                if (Date.now() > end) return clearInterval(interval);
+
+                // Heavy Launch from bottom corners
+                confetti({
+                    particleCount: 12,
+                    angle: 65,
+                    spread: 70,
+                    origin: { x: 0, y: 1 },
+                    colors: colors
+                });
+
+                confetti({
+                    particleCount: 12,
+                    angle: 115,
+                    spread: 70,
+                    origin: { x: 1, y: 1 },
+                    colors: colors
+                });
+
+                // Periodic bursts from random sides
+                if (Math.random() > 0.7) {
+                    confetti({
+                        particleCount: 25,
+                        angle: Math.random() > 0.5 ? 45 : 135,
+                        spread: 100,
+                        origin: { x: Math.random(), y: 0.8 },
+                        colors: colors
+                    });
+                }
+            }, 60);
+
+            // MASSIVE bursts more frequently
+            const burstInterval = setInterval(() => {
+                if (Date.now() > end) {
+                    // GRAND FINALE BURST
+                    confetti({
+                        particleCount: 400,
+                        spread: 160,
+                        origin: { y: 0.5 },
+                        colors: colors
+                    });
+                    return clearInterval(burstInterval);
+                }
+
+                const origins = [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0.5, y: 0.7 }, { x: 0.2, y: 0.4 }, { x: 0.8, y: 0.4 }];
+                const randomOrg = origins[Math.floor(Math.random() * origins.length)];
+
+                confetti({
+                    particleCount: 80,
+                    spread: 120,
+                    origin: randomOrg,
+                    colors: colors
+                });
+            }, 700);
+        }
+
+        function createStars() {
+            // HYPER DENSE STAR RAIN
+            setInterval(() => {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 6 + 2 + 'px';
+                star.style.width = size;
+                star.style.height = size;
+                star.style.left = Math.random() * 100 + 'vw';
+                star.style.top = '-10px';
+
+                // Random neon glow for some stars
+                const colors = ['#f0f', '#0ff', '#ff0', '#fff'];
+                const glowColor = colors[Math.floor(Math.random() * colors.length)];
+                star.style.boxShadow = `0 0 10px ${glowColor}`;
+
+                star.style.opacity = Math.random();
+                star.style.animationDuration = Math.random() * 1 + 1 + 's';
+                document.body.appendChild(star);
+
+                setTimeout(() => star.remove(), 2500);
+            }, 30); // ~33 stars per second!
+        }
+
+        function handleNavigate() {
+            if (window.navigateNext) {
+                window.navigateNext();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+
+</html>

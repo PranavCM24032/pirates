@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Map Navigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        :root {
+            --mc-bg: #8B8B8B;
+            --mc-border-light: #DBDBDB;
+            --mc-border-dark: #555555;
+            --map-paper: #C6B58A;
+            --map-grid: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            background-color: #000;
+            font-family: 'VT323', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+            image-rendering: pixelated;
+            /* Keeps pixels sharp */
+            overflow-y: auto;
+            /* Allow vertical scrolling on small screens */
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+            /* Add padding for scroll breathing room */
+        }
+
+        /* The Map Frame (Now Transparent to show Torn Edges) */
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background-image: url('images/location.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: -10;
+        }
+
+        .mc-map-container {
+            position: relative;
+            width: 90vw;
+            max-width: 500px;
+            padding: 0;
+            /* Remove padding as the paper provides it */
+            /* Removed solid border/background to let the torn paper shine */
+        }
+
+        /* The Map Paper */
+        .mc-map-paper {
+            background-color: #f5f5dc;
+            /* Using a lighter parchment color like the wanted poster */
+
+            /* Complex layering: Noise Texture + Grid lines + Compass Rose */
+            background-image:
+                url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.15"/></svg>'),
+                linear-gradient(rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+                url('images/compass_rose.png');
+
+            background-size: auto, 40px 40px, 40px 40px, 100px 100px;
+            background-repeat: repeat, repeat, repeat, no-repeat;
+            background-position: center, top left, top left, center center;
+
+            padding: 50px 30px;
+            position: relative;
+            min-height: 480px;
+            /* Slightly taller */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            /* HIGH-DETAIL JAGGED TEAR (User Provided) */
+            clip-path: polygon(2% 2%, 15% 1%, 30% 3%, 45% 1%, 60% 2%, 75% 1%, 90% 3%, 98% 1%,
+                    97% 10%, 99% 20%, 96% 30%, 98% 40%, 95% 50%, 99% 60%, 96% 75%, 98% 85%, 97% 95%, 98% 99%,
+                    90% 98%, 75% 99%, 60% 97%, 45% 99%, 30% 97%, 15% 99%, 2% 98%,
+                    1% 90%, 3% 75%, 0% 60%, 2% 45%, 1% 30%, 3% 15%, 1% 5%);
+
+            /* Trick to add border to clip-path: Multiple hard drop-shadows + Soft shadow */
+            filter:
+                drop-shadow(2px 0 0 #5d4037) drop-shadow(-2px 0 0 #5d4037) drop-shadow(0 2px 0 #5d4037) drop-shadow(0 -2px 0 #5d4037) drop-shadow(0 15px 20px rgba(0, 0, 0, 0.8));
+        }
+
+        /* Overlay for Aged Paper Effect */
+        .mc-map-paper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 70%, rgba(139, 69, 19, 0.15) 5%, transparent 20%),
+                radial-gradient(circle at 80% 20%, rgba(0, 0, 0, 0.1) 3%, transparent 15%);
+            pointer-events: none;
+            opacity: 0.7;
+            z-index: 0;
+        }
+
+        /* Inner Dotted Decoration Border */
+        .mc-map-paper::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            bottom: 25px;
+            left: 25px;
+            right: 25px;
+            border: 4px dashed #5d4037;
+            /* Darker, dashed for better visibility */
+            pointer-events: none;
+            z-index: 5;
+            /* Ensure it's above the overlay */
+            opacity: 0.6;
+        }
+
+        /* Ensure content sits above overlay and border */
+        .mc-map-paper>* {
+            z-index: 10;
+            position: relative;
+        }
+
+        /* Exception for absolute elements like avatar */
+        .mc-character {
+            position: absolute;
+        }
+
+        /* Pixel-Art Character (Avatar) - Skull Sparrow */
+        .mc-character {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            z-index: 50;
+            transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
+        }
+
+        .mc-character-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: characterBounce 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes characterBounce {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-20px);
+            }
+        }
+
+        .mc-character img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+
+        /* Minecraft Styled Button */
+        .mc-button {
+            background: #8B8B8B;
+            border-top: 4px solid var(--mc-border-light);
+            border-left: 4px solid var(--mc-border-light);
+            border-bottom: 4px solid var(--mc-border-dark);
+            border-right: 4px solid var(--mc-border-dark);
+            padding: 8px 12px;
+            /* Reduced padding */
+            color: white;
+            text-align: left;
+            cursor: pointer;
+            font-size: 1.2rem;
+            /* Reduced font size */
+            text-shadow: 2px 2px #3f3f3f;
+            transition: all 0.05s;
+            margin: 8px auto;
+            /* Reduced margin & Centered */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 90%;
+            /* Reduced width */
+            animation: pulse 1s infinite;
+        }
+
+        .mc-button:hover {
+            background: #70a030;
+            /* Minecraft Green */
+            border-top-color: #90c050;
+            border-bottom-color: #406020;
+            text-shadow: 2px 2px #204010;
+        }
+
+        .mc-button:active {
+            border-top: 4px solid var(--mc-border-dark);
+            border-left: 4px solid var(--mc-border-dark);
+            border-bottom: 4px solid var(--mc-border-light);
+            border-right: 4px solid var(--mc-border-light);
+            transform: translateY(4px);
+        }
+
+        /* Minecraft Red 'X' and Text */
+        .mc-x {
+            font-size: 8rem;
+            color: #FF4500;
+            /* Brighter red for pirate flag */
+            text-shadow: 4px 4px 0px #8B0000;
+            line-height: 1;
+            margin-bottom: 10px;
+            animation: popIn 0.3s steps(5), sparkle 1s infinite alternate;
+            /* Add sparkle */
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes sparkle {
+            0% {
+                filter: brightness(1);
+            }
+
+            100% {
+                filter: brightness(1.5);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes spin-slow {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse-slow {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+                box-shadow: 0 0 25px rgba(144, 192, 80, 0.7);
+            }
+        }
+
+        .animate-pulse-slow {
+            animation: pulse-slow 2.5s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+
+        .animate-bounce {
+            animation: bounce 1.8s infinite;
+        }
+
+        .title-text {
+            color: #3d2b1f;
+            font-size: 2rem;
+            text-align: center;
+            line-height: 1;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
+        }
+
+        .label-small {
+            font-size: 1rem;
+            color: #5d4037;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Helper for hiding/showing */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Stats Box */
+        .mc-stats-box {
+            background: rgba(0, 0, 0, 0.1);
+            border: 2px solid #5d4037;
+            padding: 10px;
+            margin: 20px 0;
+            width: 100%;
+            text-align: left;
+            font-size: 1.2rem;
+            color: #3d2b1f;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Cinematic Background with Parallax & Morph -->
+    <div class="background-layer move-cinematic"></div>
+
+    <div class="mc-map-container">
+        <!-- Skull Sparrow Character -->
+        <div id="skull-sparrow" class="mc-character">
+            <div class="mc-character-inner">
+                <img src="images/skull_sparrow.png" alt="Skull Sparrow" onerror="this.src='images/logo.png'">
+            </div>
+        </div>
+
+        <div class="mc-map-paper">
+
+            <!-- Header -->
+            <div class="title-text w-full pb-4 border-b-2 border-[#8b7355] border-dashed">
+                <span class="label-small">Current Coordinates:</span>
+                <span id="loc-name">Loading Chunks...</span>
+            </div>
+
+            <!-- Choices List -->
+            <div id="choices-container" class="w-full mt-4 flex flex-col gap-4">
+                <!-- Buttons injected here -->
+            </div>
+
+            <!-- Reveal Area -->
+            <div id="reveal-area" class="hidden flex-col items-center justify-center w-full mt-4 px-2">
+                <!-- Direct Navigation Button: Compact & Efficient -->
+                <div onclick="goToScanner()"
+                    class="ash-container mc-button min-h-[70px] flex items-center justify-center p-3 cursor-pointer shadow-[6px_6px_0_rgba(0,0,0,0.5)] transform transition-transform active:translate-y-2 active:shadow-none rounded-lg">
+                    <span id="target-name" class="text-2xl md:text-3xl font-bold text-white text-center leading-tight"
+                        style="text-shadow: 2px 2px 0 #000;">???</span>
+                </div>
+            </div>
+
+            <!-- End Area (Missing previously) -->
+            <div id="end-area" class="hidden flex-col items-center justify-center w-full mt-4 px-2 text-center">
+                <h2 class="text-4xl mb-4 text-white font-bold" style="text-shadow: 2px 2px 0 #000;"></h2>
+                <div id="final-stats" class="mc-stats-box rounded-lg opacity-90">
+                    <!-- Stats injected here -->
+                </div>
+                <button onclick="finishLevel()" class="mc-button mt-6 w-full ash-container py-4 text-2xl font-bold">
+                    COMPLETE QUEST
+                </button>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="global.js" defer></script>
+    <script>
+        let graph = null;
+
+        window.onload = function () {
+            if (window.initGame) initGame();
+
+            // Apply Minecraft Block Style to Map Paper (Texture Only)
+            if (typeof createMinecraftBlockStyle === 'function') {
+                const paper = document.querySelector('.mc-map-paper');
+                // Generate 3-shade texture: Main(Beige), Darker(Tan), Border(Brown-unused here)
+                const tex = createMinecraftBlockStyle('#f5f5dc', '#e8e8ce', '#8B4513');
+
+                // Composite: Compass > Grids > Noise > Block Texture
+                paper.style.backgroundImage = `
+        url('images/compass_rose.png'),
+        linear-gradient(rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(139, 69, 19, 0.1) 1px, transparent 1px),
+        url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.15" /></svg>'),
+        ${tex.backgroundImage}
+        `;
+                // Set sizes for each layer
+                paper.style.backgroundSize = `100px 100px, 40px 40px, 40px 40px, auto, 64px 64px`;
+                paper.style.backgroundRepeat = 'no-repeat, repeat, repeat, repeat, repeat';
+                paper.style.backgroundPosition = 'center, top left, top left, top left, top left';
+            }
+
+            // Ensure default state if new user
+            if (!gameState.currentNode) {
+                gameState.currentNode = 'A';
+                saveGame();
+            }
+
+            // Immediate Fetch Logic
+            try {
+                fetch('graph.json')
+                    .then(res => res.json())
+                    .then(data => {
+                        graph = data;
+                        loadLocation();
+                    })
+                    .catch(e => {
+                        console.error(e);
+                        document.getElementById('loc-name').innerText = "MAP CORRUPTED";
+                    });
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        function loadLocation() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const nodeId = urlParams.get('node') || gameState.currentNode;
+
+            if (urlParams.get('node')) {
+                gameState.currentNode = nodeId;
+                saveGame();
+            }
+
+            if (!nodeId || !graph?.graph_logic?.[nodeId]) {
+                document.getElementById('loc-name').innerText = "OFF THE CHART";
+                return;
+            }
+
+            // --- OPTIMIZATION: Dynamic Background ---
+            const bgLayer = document.querySelector('.background-layer');
+            if (bgLayer) {
+                const nodeImg = `images/node${nodeId.toUpperCase()}.jpg`;
+                // Simple pre-loader to prevent black flicker
+                const img = new Image();
+                img.onload = () => bgLayer.style.backgroundImage = `url('${nodeImg}')`;
+                img.src = nodeImg;
+            }
+
+            // Update UI
+            document.getElementById('loc-name').innerText = graph.location_names[nodeId] || nodeId;
+
+            updateSkullSparrowPosition(nodeId);
+
+            // Render Logic
+            const neighbors = graph.graph_logic[nodeId];
+            if (Object.keys(neighbors).length === 0) {
+                showVictory();
+            } else {
+                renderWaypoints(neighbors);
+            }
+
+            // LEVEL 3 SOUND ENHANCEMENT: Start continuous background ambient triggers
+            if (gameState.currentLevel === 3 && window.SoundSystem) {
+                window.SoundSystem.startAmbient();
+            }
+
+            if (window.applyTheme) applyTheme();
+        }
+
+        function renderWaypoints(neighbors) {
+            const list = document.getElementById('choices-container');
+            list.innerHTML = '';
+
+            Object.keys(neighbors).forEach((nextId) => {
+                const btn = document.createElement('div');
+                btn.className = 'mc-button ash-container relative';
+
+                const icon = '⚓'; // Customize per node if needed
+                btn.innerHTML = `
+        <span>${icon} PATHWAY ${nextId}</span>
+        <span class="text-sm opacity-50">&gt;&gt;</span>
+        `;
+
+                // Visual Cue: Add a pulsing arrow before active choices
+                btn.style.animation = 'pulse 1.5s infinite'; // Define @keyframes pulse {0 % { opacity: 1; } 50% {opacity: 0.7; } }
+
+                btn.onclick = () => selectChoice(nextId, neighbors[nextId]);
+                list.appendChild(btn);
+            });
+
+            // Global Visual Guide: Add a floating compass that rotates toward choices
+            addCompassGuide();
+        }
+
+        function addCompassGuide() {
+            // Remove existing compass to avoid duplicates
+            const existing = document.querySelector('.compass-guide');
+            if (existing) existing.remove();
+
+            const compass = document.createElement('div');
+            compass.className = 'compass-guide absolute top-10 right-10 text-4xl animate-spin-slow'; // Define @keyframes spin-slow
+            compass.style.animation = 'spin-slow 10s linear infinite';
+            compass.innerHTML = '🧭'; // Compass emoji
+            document.querySelector('.mc-map-paper').appendChild(compass);
+        }
+
+        function selectChoice(nextId, points) {
+            gameState.points = (gameState.points || 0) + points;
+            gameState.scanCount = (gameState.scanCount || 0) + 1;
+            gameState.targetNode = nextId;
+            saveGame();
+
+            // Node E handling is now integrated into the Reveal flow
+            // Removed immediate redirect to allow "Landing" effect at the Goal Node
+
+            // Reveal Animation
+            document.getElementById('choices-container').classList.add('hidden');
+            document.getElementById('reveal-area').classList.remove('hidden');
+            document.getElementById('reveal-area').style.display = 'flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // scroll up so they see the big X + button
+
+            document.getElementById('target-name').innerText = graph.location_names[nextId] || nextId;
+
+            if (window.showAchievement) window.showAchievement("MAP UPDATED", nextId, "📍");
+        }
+
+        function showVictory() {
+            document.getElementById('choices-container').classList.add('hidden');
+            document.getElementById('end-area').classList.remove('hidden');
+            document.getElementById('end-area').style.display = 'flex';
+
+            const score = gameState.points || 0;
+            const rank = score > 150 ? "DIAMOND EXPLORER" : "BRAVE PIRATE";
+            const title = "JOURNEY COMPLETE!";
+
+            document.querySelector('#end-area .text-4xl').innerText = title;
+            document.getElementById('final-stats').innerHTML = `
+                RANK: ${rank}<br>
+                <span class="text-sm opacity-60">CHUNKS EXPLORED: ${gameState.scanCount || 0}</span><br>
+                <span class="text-sm opacity-60">TOTAL SCORE: ${score}</span>
+            `;
+
+            if (window.playSound) window.playSound('level_up');
+        }
+
+        function updateSkullSparrowPosition(nodeId) {
+            const sparrow = document.getElementById('skull-sparrow');
+            const sparrowImg = sparrow.querySelector('img');
+            if (!sparrow) return;
+
+            // Define coordinates ONLY AT BOTTOM (Left, Middle, Right)
+            const positions = {
+                'A': { bottom: '-40px', left: '-60px', transform: 'none', img: 'sp1.png' },
+                'B': { bottom: '-40px', left: '50%', transform: 'translateX(-50%)', img: 'sp2.png' },
+                'C': { bottom: '-40px', right: '-60px', transform: 'none', img: 'sp3.png' },
+                'D': { bottom: '-40px', left: '-60px', transform: 'none', img: 'sp4.png' },
+                'F': { bottom: '-40px', left: '50%', transform: 'translateX(-50%)', img: 'sp5.png' },
+                'G': { bottom: '-40px', right: '-60px', transform: 'none', img: 'sp6.png' },
+                'H': { bottom: '-40px', left: '-60px', transform: 'none', img: 'sp7.png' },
+                'J': { bottom: '-40px', left: '50%', transform: 'translateX(-50%)', img: 'sp8.png' }
+            };
+
+            const config = positions[nodeId.toUpperCase()] || { bottom: '-40px', left: '50%', transform: 'translateX(-50%)', img: 'sp1.png' };
+
+            // Clear previous styles
+            sparrow.style.top = 'auto';
+            sparrow.style.left = 'auto';
+            sparrow.style.right = 'auto';
+            sparrow.style.transform = config.transform || 'none';
+
+            // Apply new image from current state or default
+            if (sparrowImg) sparrowImg.src = `images/${config.img}`;
+
+            // Apply position styles
+            const { img, transform, ...posStyles } = config;
+            Object.assign(sparrow.style, posStyles);
+
+            // Add a "landing" effect
+            sparrow.classList.remove('animate-bounce');
+            void sparrow.offsetWidth; // trigger reflow
+            sparrow.style.opacity = '1';
+        }
+
+        function goToScanner() {
+            // Check if the target node is "end" - if so, go to celebration
+            if (gameState.targetNode && gameState.targetNode.toLowerCase() === 'end') {
+                window.location.replace('celebration.html');
+            } else {
+                // Enforcement: Always go to scanner to verify arrival at the chosen destination
+                window.location.replace('qr.html');
+            }
+        }
+
+        function finishLevel() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentNode = urlParams.get('node') || gameState.currentNode;
+
+            // Check if target node is "end" - if so, go to celebration
+            if (gameState.targetNode && gameState.targetNode.toLowerCase() === 'end') {
+                window.location.replace('celebration.html');
+            } else if (currentNode && (currentNode.toUpperCase() === 'E')) {
+                window.location.replace('qr.html');
+            } else {
+                if (window.navigateNext) navigateNext();
+            }
+        }
+
+        function saveGame() {
+            localStorage.setItem('pirateState', JSON.stringify(gameState));
+        }
+    </script>
+</body>
+
+</html>

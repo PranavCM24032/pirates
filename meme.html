@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Bounty - Video Transmission</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            background: #000;
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        /* HIDE GLOBAL TIMER ON THIS PAGE */
+        #client-timer-display {
+            display: none !important;
+        }
+
+        .video-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            background: #000;
+            overflow: hidden;
+        }
+
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
+            pointer-events: none;
+            user-select: none;
+            background: #000;
+            transform: none !important;
+        }
+
+        /* 
+           CINEMATIC VIGNETTE: 
+           Naturally obscures YT UI (Top/Sides) without 'cutting' the screen. 
+        */
+        .vignette-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.95) 100%);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* Interaction blocker */
+        .click-blocker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 150;
+            background: transparent;
+        }
+
+        /* Loading Screen - Pure Black */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading-overlay"></div>
+
+    <div class="video-wrapper">
+        <div id="player-container" style="width: 100%; height: 100%;"></div>
+
+        <!-- Cinematic UI hiding overlay -->
+        <div class="vignette-overlay"></div>
+
+        <!-- Interaction blocker -->
+        <div class="click-blocker" onclick="finishBounty()"></div>
+    </div>
+
+    <script src="global.js" defer></script>
+    <script>
+        // YouTube IFrame API Player
+        let player;
+        const ytLink = localStorage.getItem('pirateMeme');
+        const start = parseInt(localStorage.getItem('pirateMemeStart') || 0);
+        const end = parseInt(localStorage.getItem('pirateMemeEnd') || 0);
+
+        function onYouTubeIframeAPIReady() {
+            if (!ytLink) {
+                window.location.replace('qr.html');
+                return;
+            }
+
+            let videoId = '';
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+            const match = ytLink.match(regExp);
+            if (match && match[2] && match[2].length >= 11) {
+                videoId = match[2].split('/')[0];
+            } else {
+                window.location.replace('qr.html');
+                return;
+            }
+
+            player = new YT.Player('player-container', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 1,
+                    'controls': 0,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'showinfo': 0,
+                    'iv_load_policy': 3,
+                    'start': start,
+                    'end': (end > 0) ? end : undefined,
+                    'loop': 1,
+                    'playlist': videoId, // Required for loop in IFrame API
+                    'disablekb': 1,
+                    'enablejsapi': 1,
+                    'mute': 1,
+                    'origin': window.location.origin,
+                    'widget_referrer': window.location.origin
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+
+            // Try to unmute after half a second
+            setTimeout(() => {
+                event.target.unMute();
+                event.target.setVolume(100);
+            }, 500);
+
+            // Fade out loading screen
+            setTimeout(() => {
+                const overlay = document.getElementById('loading-overlay');
+                overlay.style.transition = 'opacity 0.8s ease';
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 800);
+            }, 1000);
+        }
+
+        function onPlayerStateChange(event) {
+            // Backup loop logic
+            if (event.data === YT.PlayerState.ENDED) {
+                player.seekTo(start);
+                player.playVideo();
+            }
+        }
+
+        let firstInteraction = true;
+        function finishBounty() {
+            if (firstInteraction) {
+                if (player && player.playVideo) {
+                    player.playVideo();
+                    player.unMute();
+                    player.setVolume(100);
+                }
+                firstInteraction = false;
+                return;
+            }
+
+            localStorage.removeItem('pirateMeme');
+            localStorage.removeItem('pirateMemeStart');
+            localStorage.removeItem('pirateMemeEnd');
+
+            if (window.navigateNext) {
+                navigateNext();
+            } else {
+                window.location.replace('qr.html');
+            }
+        }
+
+        // Load the IFrame Player API
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    </script>
+</body>
+
+</html>

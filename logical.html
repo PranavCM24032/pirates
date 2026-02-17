@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bounty Hunt - Logical Reasoning</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Outfit', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            width: 100vw;
+            padding: 20px;
+        }
+
+        .captain-header {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFD700;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.65rem, 2vw, 1rem);
+            text-align: center;
+            z-index: 100;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .bg-logical {
+            position: fixed;
+            top: -5%;
+            left: -5%;
+            width: 110%;
+            height: 110%;
+            background: url('images/cave.png') no-repeat center center;
+            background-size: cover;
+            filter: brightness(1.2) contrast(1.1);
+            z-index: 1;
+            animation: cinematicCamera 25s ease-in-out infinite alternate;
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+
+        @keyframes cinematicCamera {
+            0% {
+                transform: scale(1) translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: scale(1.06) translate(0.5%, -0.5%) rotate(0.2deg);
+            }
+
+            100% {
+                transform: scale(1.1) translate(0, 0) rotate(0deg);
+            }
+        }
+
+        .torchlight {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle 400px at var(--tx, 50%) var(--ty, 50%), rgba(255, 220, 100, 0.35) 0%, rgba(255, 120, 0, 0.15) 35%, rgba(0, 0, 0, 0.98) 70%);
+            pointer-events: none;
+            z-index: 500;
+            transition: background 0.05s ease-out, opacity 1.5s ease-in-out;
+            opacity: 1;
+            will-change: background;
+        }
+
+        .torchlight::after {
+            content: '';
+            position: fixed;
+            top: var(--ty, 50%);
+            left: var(--tx, 50%);
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px #fff, 0 0 30px #ffaa00, 0 0 50px #ff6600;
+            z-index: 501;
+            filter: blur(1px);
+        }
+
+        .discovery-hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #FFAA00;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            z-index: 600;
+            text-shadow: 0 0 10px #000;
+            pointer-events: none;
+        }
+
+        .hud-spacer {
+            height: 80px;
+            flex-shrink: 0;
+        }
+
+        .card-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .glass-card {
+            position: relative;
+            width: 100%;
+            max-width: 35rem;
+            background: #0d0600;
+            border: 4px solid #FFAA00;
+            padding: clamp(1.5rem, 5vh, 2.5rem);
+            box-shadow: 0 0 60px rgba(0, 0, 0, 1), inset 0 0 30px rgba(255, 170, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 40px;
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out, opacity 1.5s ease-in-out;
+            opacity: 1;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+        }
+
+        .riddle-badge {
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            padding: 4px 14px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 14px;
+        }
+
+        .question-box {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            width: 100%;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-bottom: 16px;
+        }
+
+        .question-text {
+            font-family: 'Outfit', sans-serif !important;
+            font-size: clamp(1.1rem, 3vw, 1.4rem);
+            line-height: 1.5;
+            color: #FFD84D;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-align: center;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+            width: 100%;
+        }
+
+        .option-btn {
+            font-family: 'Outfit', sans-serif !important;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 16px 20px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: left;
+            font-size: 1.1rem;
+            line-height: 1.35;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: 0.3px;
+            white-space: normal;
+            word-break: break-word;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+        }
+
+        .option-btn span {
+            font-family: 'Outfit', sans-serif !important;
+            font-weight: 400;
+        }
+
+        .option-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.02);
+        }
+
+        .option-btn.selected {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: #FFAA00;
+        }
+
+        .option-btn .radio-circle {
+            width: 14px;
+            height: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .option-btn.selected .radio-circle {
+            background: #FFAA00;
+            border-color: #FFAA00;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #FFAA00, #FF7700);
+            color: #000;
+            font-weight: 400;
+            padding: clamp(0.8rem, 2.5vh, 1.25rem);
+            border-radius: 0.8rem;
+            border: none;
+            cursor: pointer;
+            font-size: clamp(0.9rem, 4vw, 1.1rem);
+            margin-top: 0.8rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+        }
+
+        .submit-btn.urgent {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            color: #fff;
+        }
+
+        .submit-btn:disabled {
+            background: rgba(40, 0, 0, 0.5);
+            color: #ff4444;
+            cursor: not-allowed;
+            border: 1px solid rgba(255, 68, 68, 0.2);
+        }
+
+        .card-content.blurred {
+            filter: blur(15px);
+            pointer-events: none;
+            opacity: 0.4;
+            transition: all 0.5s ease;
+        }
+
+        .fire-point-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(255, 200, 50, 0.6) 0%, rgba(255, 150, 0, 0.3) 35%, transparent 65%);
+            animation: fireFlare 1.8s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .fire-point-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fireFlare {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+
+            40% {
+                opacity: 0.8;
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.6);
+            }
+        }
+
+        .treasure-guide {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            color: #FFAA00;
+            text-align: center;
+            letter-spacing: 2px;
+            z-index: 1998;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+            line-height: 1.5;
+            max-width: 180vw;
+            padding: 16px;
+
+
+            border-radius: 8px;
+        }
+
+        .treasure-guide.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .jumpscare-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            overflow: hidden;
+            border: 8px solid #ff0000;
+            box-shadow: inset 0 0 150px #ff0000;
+        }
+
+        .jumpscare-overlay.active {
+            display: flex;
+            animation: glitchStrike 0.4s steps(2) infinite, scalePulse 0.15s ease-in-out infinite alternate;
+        }
+
+        @keyframes glitchStrike {
+            0% {
+                transform: translate(0);
+                filter: hue-rotate(0deg) contrast(1);
+            }
+
+            20% {
+                transform: translate(-5px, 5px);
+                filter: hue-rotate(90deg) contrast(1.5);
+            }
+
+            40% {
+                transform: translate(5px, -5px);
+            }
+
+            60% {
+                transform: translate(-10px, 0);
+                filter: hue-rotate(180deg);
+            }
+
+            80% {
+                transform: translate(10px, 5px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        @keyframes scalePulse {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.05);
+            }
+        }
+
+        .skeleton-horror {
+            width: 90%;
+            max-width: 450px;
+            filter: drop-shadow(0 0 30px #ff0000);
+            animation: skeletonVibrate 0.1s infinite;
+        }
+
+        @keyframes skeletonVibrate {
+            0% {
+                transform: translate(0);
+            }
+
+            50% {
+                transform: translate(2px, -2px);
+            }
+
+            100% {
+                transform: translate(-2px, 2px);
+            }
+        }
+
+        .scary-text {
+            color: #ff0000;
+            font-size: clamp(1.5rem, 6vw, 3.5rem);
+            font-family: 'Press Start 2P', cursive;
+            text-shadow: 0 0 20px #ff0000, 4px 4px 0 #000;
+            margin-top: 20px;
+            letter-spacing: 2px;
+            animation: textGlitch 0.2s infinite;
+            text-align: center;
+            width: 100%;
+            padding: 0 20px;
+            display: block;
+        }
+
+        @keyframes textGlitch {
+            0% {
+                opacity: 1;
+                transform: skew(0deg);
+            }
+
+            20% {
+                opacity: 0.8;
+                transform: skew(10deg);
+            }
+
+            40% {
+                opacity: 1;
+                transform: skew(-10deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: skew(0deg);
+            }
+        }
+
+        .curse-msg {
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 10px;
+            opacity: 0.8;
+            text-align: center;
+        }
+
+        .penalty-ring-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px;
+            height: 220px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .penalty-ring-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 10px rgba(255, 68, 68, 0.4));
+        }
+
+        .penalty-ring-svg circle {
+            fill: none;
+            stroke-width: 10;
+            stroke-linecap: round;
+        }
+
+        .penalty-ring-bg {
+            stroke: rgba(255, 68, 68, 0.1);
+        }
+
+        .penalty-ring-progress {
+            stroke: #ff4444;
+            stroke-dasharray: 283;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .penalty-time-text {
+            position: absolute;
+            font-size: 3rem;
+            font-weight: 900;
+            color: #ff4444;
+            text-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .penalty-time-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 400px) {
+            .glass-card {
+                padding: 25px 20px;
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="bg-logical" id="parallax-bg"></div>
+    <div class="torchlight" id="fire-point"></div>
+    <div id="discovery-hint" class="discovery-hint">Move your Torch to Reveal the Riddle</div>
+
+    <div class="hud-spacer"></div>
+
+    <div class="card-wrapper" style="position: relative;">
+        <!-- Ring Timer (Floating) -->
+        <div id="penalty-ring" class="penalty-ring-container">
+            <svg class="penalty-ring-svg" viewBox="0 0 100 100">
+                <circle class="penalty-ring-bg" cx="50" cy="50" r="45" />
+                <circle id="ring-progress" class="penalty-ring-progress" cx="50" cy="50" r="45" />
+            </svg>
+            <div class="penalty-time-text">
+                <span id="penalty-countdown">59</span>
+                <span class="penalty-time-label">Penalty</span>
+            </div>
+        </div>
+
+        <div id="logic-card" class="glass-card">
+            <div class="card-content" id="card-inner-content">
+                <div id="riddle-badge" class="riddle-badge">Ancient Riddle</div>
+
+                <div class="question-box">
+                    <h2 id="question-text" class="question-text">Loading the ancient curse...</h2>
+                </div>
+
+                <div id="options-container" class="options-grid"></div>
+
+                <button id="submit-btn" class="submit-btn w-full" onclick="checkLogic()" disabled>
+                    Break the Curse
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WRONG ANSWER HORROR OVERLAY -->
+
+    <!-- 🔥 FIRE POINT EFFECT 🔥 -->
+    <div id="firePoint" class="fire-point-overlay"></div>
+
+    <!-- TREASURE GUIDE MESSAGE -->
+    <div id="treasureGuide" class="treasure-guide">Caption Skull Sparrow Will guide u to lost treasure</div>
+
+    <div id="jumpscare" class="jumpscare-overlay">
+        <!-- DETAILED ANATOMICAL SKULL SVG -->
+        <svg class="skeleton-horror" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                    <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+            <!-- Main Cranium -->
+            <path
+                d="M50 5 C32 5 20 18 20 40 C20 55 25 65 32 68 L30 85 C30 90 35 95 50 95 C65 95 70 90 70 85 L68 68 C75 65 80 55 80 40 C80 18 68 5 50 5 Z"
+                fill="#EAEAEA" />
+            <!-- Orbits (Eye Sockets) -->
+            <path d="M32 38 C28 38 25 45 25 50 C25 55 28 60 35 60 C42 60 45 55 45 50 C45 45 42 38 32 38 Z"
+                fill="#000" />
+            <path d="M68 38 C72 38 75 45 75 50 C75 55 72 60 65 60 C58 60 55 55 55 50 C55 45 58 38 68 38 Z"
+                fill="#000" />
+            <!-- Nasal Cavity -->
+            <path d="M50 58 L45 70 L55 70 Z" fill="#000" />
+            <!-- Cheekbone Details -->
+            <path d="M22 55 Q25 65 35 65" stroke="#CCC" stroke-width="1.5" fill="none" />
+            <path d="M78 55 Q75 65 65 65" stroke="#CCC" stroke-width="1.5" fill="none" />
+            <!-- Teeth/Mandible Details -->
+            <path d="M35 75 L65 75" stroke="#000" stroke-width="2" />
+            <path d="M38 72 L38 78 M44 72 L44 82 M50 72 L50 82 M56 72 L56 82 M62 72 L62 78" stroke="#000"
+                stroke-width="1" />
+            <!-- Evil Glow -->
+            <circle cx="35" cy="50" r="3" fill="#FF0000" filter="url(#glow)">
+                <animate attributeName="opacity" values="0.4;1;0.4" dur="0.15s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="65" cy="50" r="3" fill="#FF0000" filter="url(#glow)">
+                <animate attributeName="opacity" values="0.4;1;0.4" dur="0.15s" repeatCount="indefinite" />
+            </circle>
+        </svg>
+        <div class="scary-text">FOOLISH MORTAL!</div>
+        <div id="jumpscare-msg" class="curse-msg"></div>
+    </div>
+
+    <script src="global.js" defer></script>
+    <script>
+        const LOGIC_PENALTY_KEY = 'logicPenaltyState';
+        const LOGIC_QUESTION_KEY = 'currentLogicQuestionId';
+        let currentPuzzle = null;
+        let selectedOption = null;
+        let penaltyActive = false;
+        let penaltySeconds = 0;
+        let penaltyTimerInt = null;
+
+        window.onload = function () {
+            if (window.initGame) initGame();
+            const targetId = localStorage.getItem('targetLogicId');
+
+            fetch('logical.json')
+                .then(res => res.json())
+                .then(data => {
+                    if (targetId) {
+                        currentPuzzle = data.find(item => item.queid.toUpperCase() === targetId.toUpperCase());
+                    }
+
+                    if (!currentPuzzle) {
+                        const savedQuestionId = localStorage.getItem(LOGIC_QUESTION_KEY);
+                        if (savedQuestionId) {
+                            currentPuzzle = data.find(item => item.queid.toUpperCase() === savedQuestionId.toUpperCase());
+                        }
+                    }
+
+                    if (!currentPuzzle) {
+                        currentPuzzle = data[Math.floor(Math.random() * data.length)];
+                    }
+
+                    if (currentPuzzle && currentPuzzle.queid) {
+                        localStorage.setItem(LOGIC_QUESTION_KEY, currentPuzzle.queid);
+                    }
+
+                    renderPuzzle();
+                    restorePenaltyState();
+                });
+        };
+
+        function renderPuzzle() {
+            document.getElementById('question-text').innerText = currentPuzzle.que;
+            document.getElementById('riddle-badge').innerText = 'Ancient Riddle';
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            const displayOptions = currentPuzzle.options.slice(0, 4);
+            displayOptions.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `
+                    <span>${opt}</span>
+                    <div class="radio-circle"></div>
+                `;
+                btn.onclick = () => selectOption(btn, opt);
+                container.appendChild(btn);
+            });
+        }
+
+        let isTicking = false;
+        function handleMove(e) {
+            if (isTicking) return;
+
+            isTicking = true;
+            requestAnimationFrame(() => {
+                const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+                const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+
+                document.documentElement.style.setProperty('--tx', `${clientX}px`);
+                document.documentElement.style.setProperty('--ty', `${clientY}px`);
+
+                const card = document.getElementById('logic-card');
+                const bg = document.getElementById('parallax-bg');
+                const rotateY = ((clientX - window.innerWidth / 2) / window.innerWidth) * 15;
+                const rotateX = ((window.innerHeight / 2 - clientY) / window.innerHeight) * 15;
+
+                if (card) {
+                    card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+                }
+
+                if (bg) {
+                    bg.style.transform = `translate(${rotateY * -0.4}px, ${rotateX * -0.4}px) scale(1.1)`;
+                }
+
+                const hint = document.getElementById('discovery-hint');
+                if (hint) {
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 1000);
+                }
+
+                isTicking = false;
+            });
+        }
+
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchstart', handleMove, { passive: false });
+
+        function selectOption(btn, value) {
+            if (penaltyActive) return;
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedOption = value;
+            document.getElementById('submit-btn').disabled = false;
+        }
+
+        function checkLogic() {
+            if (penaltyActive || !currentPuzzle || !selectedOption) return;
+            if (selectedOption.toLowerCase() === currentPuzzle.ans.toLowerCase()) {
+                handleSuccess();
+            } else {
+                handleFailure();
+            }
+        }
+
+        function handleSuccess() {
+            const btn = document.getElementById('submit-btn');
+            btn.style.background = '#00FF00';
+            btn.innerText = 'CURSE BROKEN';
+            btn.disabled = true;
+
+            const card = document.getElementById('logic-card');
+            const bg = document.getElementById('parallax-bg');
+            const torch = document.getElementById('fire-point');
+            const firePoint = document.getElementById('firePoint');
+            const treasureGuide = document.getElementById('treasureGuide');
+
+            if (card) {
+                card.style.opacity = '0.1';
+                card.style.filter = 'blur(4px)';
+                card.style.pointerEvents = 'none';
+            }
+
+            if (bg) {
+                bg.style.transition = 'filter 4.5s ease, transform 5s linear';
+                bg.style.filter = 'brightness(1.05) contrast(1.05)';
+            }
+
+            if (window.showAchievement) showAchievement('CURSE BROKEN', 'Vault Uncovered', 'XP');
+            localStorage.removeItem('targetLogicId');
+            localStorage.removeItem(LOGIC_QUESTION_KEY);
+            clearPenaltyState();
+
+            setTimeout(() => {
+                if (firePoint) firePoint.classList.add('active');
+                if (window.playSound) window.playSound('success');
+            }, 2000);
+
+            setTimeout(() => {
+                if (bg) bg.style.filter = 'brightness(1.9) contrast(1.25) saturate(1.15)';
+                if (torch) torch.style.opacity = '0';
+                if (treasureGuide) treasureGuide.classList.add('active');
+            }, 2800);
+
+            setTimeout(() => {
+                if (firePoint) firePoint.classList.remove('active');
+            }, 6200);
+        }
+
+        function handleFailure() {
+            if (penaltyActive) return;
+
+            penaltyActive = true;
+            penaltySeconds = 59;
+            if (window.playSound) window.playSound('hurt');
+
+            const scare = document.getElementById('jumpscare');
+            const scareMsg = document.getElementById('jumpscare-msg');
+            const btn = document.getElementById('submit-btn');
+            const cardContent = document.getElementById('card-inner-content');
+            const penaltyRing = document.getElementById('penalty-ring');
+
+            scare.classList.add('active');
+            scareMsg.innerText = 'INCORRECT CALCULATION! PENALTY ENGAGED.';
+
+            btn.disabled = true;
+            btn.classList.add('urgent');
+            cardContent.classList.add('blurred');
+            penaltyRing.style.display = 'flex';
+
+            setTimeout(() => {
+                scare.classList.remove('active');
+                resetSelection();
+            }, 2000);
+
+            const expiresAt = Date.now() + ((penaltySeconds + 1) * 1000);
+            savePenaltyState(expiresAt);
+            startPenaltyCountdown(expiresAt);
+        }
+
+        function savePenaltyState(expiresAt) {
+            const puzzleId = currentPuzzle && currentPuzzle.queid ? currentPuzzle.queid : '';
+            localStorage.setItem(LOGIC_PENALTY_KEY, JSON.stringify({
+                active: true,
+                expiresAt,
+                puzzleId
+            }));
+        }
+
+        function clearPenaltyState() {
+            localStorage.removeItem(LOGIC_PENALTY_KEY);
+            if (penaltyTimerInt) {
+                clearInterval(penaltyTimerInt);
+                penaltyTimerInt = null;
+            }
+        }
+
+        function restorePenaltyState() {
+            const raw = localStorage.getItem(LOGIC_PENALTY_KEY);
+            if (!raw || !currentPuzzle) return;
+
+            try {
+                const state = JSON.parse(raw);
+                if (!state || !state.active || !state.expiresAt) {
+                    clearPenaltyState();
+                    return;
+                }
+
+                if (state.puzzleId && currentPuzzle.queid && state.puzzleId !== currentPuzzle.queid) {
+                    clearPenaltyState();
+                    return;
+                }
+
+                if (Date.now() >= state.expiresAt) {
+                    clearPenaltyState();
+                    return;
+                }
+
+                penaltyActive = true;
+                resetSelection();
+                startPenaltyCountdown(state.expiresAt);
+            } catch (err) {
+                clearPenaltyState();
+            }
+        }
+
+        function startPenaltyCountdown(expiresAt) {
+            const btn = document.getElementById('submit-btn');
+            const cardContent = document.getElementById('card-inner-content');
+            const penaltyRing = document.getElementById('penalty-ring');
+            const ringProgress = document.getElementById('ring-progress');
+            const countdownText = document.getElementById('penalty-countdown');
+            if (!btn || !cardContent || !penaltyRing || !ringProgress || !countdownText) return;
+
+            if (penaltyTimerInt) {
+                clearInterval(penaltyTimerInt);
+                penaltyTimerInt = null;
+            }
+
+            penaltyActive = true;
+            btn.disabled = true;
+            btn.classList.add('urgent');
+            cardContent.classList.add('blurred');
+            penaltyRing.style.display = 'flex';
+
+            const tick = () => {
+                const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+                penaltySeconds = remaining;
+                countdownText.innerText = remaining;
+
+                const offset = 283 - (remaining / 59) * 283;
+                ringProgress.style.strokeDashoffset = offset;
+                btn.innerText = `PENALTY: ${remaining}s`;
+
+                if (remaining <= 0) {
+                    clearPenaltyState();
+                    penaltyActive = false;
+                    cardContent.classList.remove('blurred');
+                    penaltyRing.style.display = 'none';
+                    btn.classList.remove('urgent');
+                    btn.innerText = 'Break the Curse';
+                    btn.disabled = true;
+                }
+            };
+
+            tick();
+            penaltyTimerInt = setInterval(tick, 250);
+        }
+
+        function resetSelection() {
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            selectedOption = null;
+            document.getElementById('submit-btn').disabled = true;
+        }
+    </script>
+</body>
+
+</html>

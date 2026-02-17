@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>Bounty Pirates - Treasure Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="global.js" defer></script>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: #000;
+            color: #FFAA00;
+            height: 100vh;
+            width: 100vw;
+            overflow-y: auto;
+            /* ENABLE SCROLLING FOR MOBILE */
+            position: relative;
+        }
+
+        .app-container {
+            min-height: 90vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Background Layers */
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background: url('images/qr1.png') center/cover;
+            z-index: -3;
+        }
+
+
+
+        .logo-header {
+            width: 100%;
+            max-width: 420px;
+            margin-top: 2vh;
+            margin-bottom: 4vh;
+            /* Space between logo and panel */
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+        }
+
+        .bottom-spacer {
+            height: 40px;
+            /* Roughly same height as logo + its margins to balance content */
+            width: 100%;
+            pointer-events: none;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+            animation: float 3s ease-in-out infinite;
+            z-index: 15;
+        }
+
+        .main-title {
+            font-size: clamp(1.2rem, 8vw, 2.5rem);
+            color: #FFAA00;
+            text-shadow: 0 0 0.6rem rgba(255, 170, 0, 0.5);
+            letter-spacing: 0.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: clamp(0.5rem, 3vw, 0.8rem);
+            color: #8B7355;
+            text-transform: uppercase;
+            letter-spacing: 0.3rem;
+        }
+
+        /* Panel Wrapper */
+        .panel-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 32px;
+        }
+
+        /* Wooden Panel */
+
+        .wooden-panel {
+            /* Rich Color Glass (High Opacity, No Blur) */
+            background: linear-gradient(145deg, rgba(80, 40, 20, 0.95), rgba(40, 20, 10, 0.98));
+            border: 0.3rem solid #FFAA00;
+            box-shadow:
+                0 0 0 0.3rem #000,
+                0 0 40px rgba(255, 170, 0, 0.25),
+                inset 0 0 60px rgba(0, 0, 0, 0.7);
+            padding: 1.5rem;
+            width: 90vw;
+            max-width: 420px;
+            aspect-ratio: 1 / 1;
+
+            /* Anti-stretching while keeping frame visible */
+            min-height: 0;
+            overflow: visible;
+
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+            z-index: 5;
+        }
+
+        .wood-block {
+            position: absolute;
+            background: #5D4037;
+            border: 2px solid #3E2723;
+            z-index: 1;
+        }
+
+        .block-top {
+            top: -10px;
+            left: 15px;
+            right: 15px;
+            height: 12px;
+        }
+
+        .block-bottom {
+            bottom: -10px;
+            left: 15px;
+            right: 15px;
+            height: 12px;
+        }
+
+        .block-left {
+            left: -10px;
+            top: 15px;
+            bottom: 15px;
+            width: 12px;
+        }
+
+        .block-right {
+            right: -10px;
+            top: 15px;
+            bottom: 15px;
+            width: 12px;
+        }
+
+        .corner-block {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #3E2723;
+            border: 2px solid #5D4037;
+            border-radius: 2px;
+            z-index: 2;
+        }
+
+        .corner-tl {
+            top: -14px;
+            left: -14px;
+        }
+
+        .corner-tr {
+            top: -14px;
+            right: -14px;
+        }
+
+        .corner-bl {
+            bottom: -14px;
+            left: -14px;
+        }
+
+        .corner-br {
+            bottom: -14px;
+            right: -14px;
+        }
+
+        /* Corner Decorations */
+        .wooden-panel::before,
+        .wooden-panel::after {
+            content: '';
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            background: url('data:image/svg+xml,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L100,0 L100,100 L0,100 Z" fill="none" stroke="%238B4513" stroke-width="4"/><circle cx="50" cy="50" r="22" fill="none" stroke="%23FFAA00" stroke-width="3"/></svg>');
+            background-size: contain;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        .wooden-panel::before {
+            top: -22px;
+            left: -22px;
+        }
+
+        .wooden-panel::after {
+            bottom: -22px;
+            right: -22px;
+            transform: rotate(180deg);
+        }
+
+
+        /* Close Button - Outside Top-Right */
+        .close-btn {
+            position: absolute;
+            top: -1.25rem;
+            right: -1.25rem;
+            width: 3.125rem;
+            height: 3.125rem;
+            background: #8B4513;
+            border: 0.25rem solid #FFAA00;
+            border-radius: 50%;
+            color: #FFAA00;
+            font-size: 1.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            box-shadow: 0 0.25rem 0.9rem rgba(0, 0, 0, 0.8);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .close-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+            background: #A0522D;
+            box-shadow: 0 0 20px #FFAA00;
+        }
+
+        /* Pirate Skull Icon */
+        .pirate-skull {
+            margin-bottom: 10px;
+            /* Reduced gap */
+            animation: pulse 2s infinite;
+        }
+
+        .pirate-skull svg {
+            width: 60px;
+            height: 60px;
+            filter: drop-shadow(0 0 10px rgba(255, 170, 0, 0.5));
+        }
+
+        /* Scan Button */
+        .scan-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            /* Tighter */
+            margin: 10px 0;
+        }
+
+        .scan-button-container {
+            position: relative;
+            width: 120px;
+            /* Smaller */
+            height: 120px;
+        }
+
+        .scan-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85px;
+            height: 85px;
+            background: linear-gradient(145deg, #FFAA00, #FF8800);
+            border: 5px solid #5A2D0C;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            box-shadow:
+                inset 0 0 20px rgba(255, 255, 255, 0.3),
+                0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+        }
+
+        .scan-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow:
+                inset 0 0 30px rgba(255, 255, 255, 0.4),
+                0 0 30px rgba(255, 170, 0, 0.5);
+        }
+
+        .scan-button svg {
+            width: 40px;
+            height: 40px;
+            fill: #5A2D0C;
+        }
+
+        .scan-waves {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+        }
+
+        .wave {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(255, 170, 0, 0.6);
+            border-radius: 50%;
+            animation: wave-pulse 2s infinite;
+        }
+
+        .wave:nth-child(1) {
+            width: 120px;
+            height: 120px;
+            animation-delay: 0s;
+        }
+
+        .wave:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            animation-delay: 0.5s;
+        }
+
+        /* Menu Buttons */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            /* Tighter */
+            width: 100%;
+            max-width: 300px;
+            margin-top: 15px;
+            /* Reduced gap */
+        }
+
+        .menu-btn {
+            background: linear-gradient(145deg, rgba(139, 69, 19, 0.8), rgba(101, 67, 33, 0.9));
+            border: 0.2rem solid #FFAA00;
+            border-radius: 0.6rem;
+            padding: 1rem 1.25rem;
+            color: #FFAA00;
+            text-align: center;
+            cursor: pointer;
+            font-size: clamp(0.6rem, 2.5vw, 0.8rem);
+            text-transform: uppercase;
+            letter-spacing: 0.15rem;
+            transition: all 0.3s;
+            box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-btn:hover {
+            background: linear-gradient(145deg, rgba(255, 170, 0, 0.2), rgba(255, 136, 0, 0.3));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Manual Input */
+        .manual-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 25, 41, 0.95);
+            backdrop-filter: blur(10px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            border-radius: 20px;
+            z-index: 20;
+        }
+
+        .manual-input.active {
+            display: flex;
+        }
+
+        .manual-title {
+            font-size: 1.2rem;
+            color: #FFAA00;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .manual-instruction {
+            font-size: 0.7rem;
+            color: #8B7355;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .code-input {
+            width: 100%;
+            max-width: 300px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 3px solid #FFAA00;
+            border-radius: 10px;
+            padding: 15px;
+            color: #FFAA00;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            text-align: center;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .code-input::placeholder {
+            color: rgba(255, 170, 0, 0.5);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 20px;
+        }
+
+        .action-btn {
+            padding: 12px 25px;
+            background: linear-gradient(145deg, #8B4513, #5A2D0C);
+            border: 2px solid #FFAA00;
+            border-radius: 8px;
+            color: #FFAA00;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: linear-gradient(145deg, #FFAA00, #FF8800);
+            color: #5A2D0C;
+            transform: translateY(-2px);
+        }
+
+        /* Scanner Area */
+        .scanner-area {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            z-index: 20;
+        }
+
+        .scanner-area.active {
+            display: flex;
+        }
+
+        .scanner-view {
+            position: absolute;
+            inset: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 1);
+            background: #000;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+
+
+        #reader {
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
+        }
+
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: 10px;
+        }
+
+        .scanner-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 2px;
+            background: #FFAA00;
+            animation: scan-line 2s infinite;
+        }
+
+        /* Flash Effect */
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Animations */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes wave-pulse {
+            0% {
+                width: 100px;
+                height: 100px;
+                opacity: 0.8;
+            }
+
+            100% {
+                width: 180px;
+                height: 180px;
+                opacity: 0;
+            }
+        }
+
+        @keyframes scan-line {
+            0% {
+                top: 10%;
+            }
+
+            100% {
+                top: 90%;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .main-title {
+                font-size: 1.8rem;
+            }
+
+            .wooden-panel {
+                padding: 20px;
+            }
+
+            .scan-button-container {
+                width: 120px;
+                height: 120px;
+            }
+
+            .scan-button {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        @media (max-width: 350px) {
+            .main-title {
+                font-size: 1.4rem;
+            }
+
+            .subtitle {
+                font-size: 0.6rem;
+            }
+
+            .wooden-panel {
+                width: 100%;
+                border-width: 4px;
+                padding: 10px;
+            }
+
+            .scan-button-container {
+                width: 100px;
+                height: 100px;
+            }
+
+            .scan-button {
+                width: 65px;
+                height: 65px;
+            }
+
+            .menu-btn {
+                padding: 10px;
+                font-size: 0.6rem;
+            }
+        }
+
+        /* Short Height Devices (iPhone Landscape etc) */
+        @media (max-height: 800px) {
+            .app-container {
+                justify-content: flex-start;
+                padding-top: 10px;
+                min-height: auto;
+            }
+
+            .logo-header {
+                margin-top: 5px;
+                margin-bottom: 10px;
+            }
+
+            .main-title {
+                font-size: 1.5rem;
+            }
+
+            .wooden-panel {
+                padding: 1rem;
+                margin-top: 10px;
+                max-width: 320px;
+            }
+
+            .scan-button-container {
+                width: 100px;
+                height: 100px;
+            }
+
+            .scan-button {
+                width: 70px;
+                height: 70px;
+            }
+
+            .menu-buttons {
+                margin-top: 10px;
+                gap: 5px;
+            }
+
+            .menu-btn {
+                padding: 0.8rem;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Background Layers -->
+    <div class="background-layer move-cinematic"></div>
+
+
+    <!-- Flash Effect -->
+    <div class="flash" id="flash"></div>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+
+        <!-- Panel Wrapper -->
+        <div class="panel-wrapper">
+            <!-- Close Button (Positioned relative to wrapper) -->
+            <button class="close-btn" id="closeBtn" onclick="closeScanner()" style="display: none;">×</button>
+
+            <!-- Wooden Panel -->
+            <div class="wooden-panel">
+                <div class="wood-block block-top"></div>
+                <div class="wood-block block-bottom"></div>
+                <div class="wood-block block-left"></div>
+                <div class="wood-block block-right"></div>
+                <div class="corner-block corner-tl"></div>
+                <div class="corner-block corner-tr"></div>
+                <div class="corner-block corner-bl"></div>
+                <div class="corner-block corner-br"></div>
+
+                <!-- Pirate Skull -->
+                <div class="pirate-skull flex flex-col items-center gap-2" style="margin-bottom: 20px;">
+                    <img src="images/logo.png" class="w-[60px] h-[60px] object-contain pixelated" alt="Skull">
+                    <div id="target-display" class="text-[0.6rem] text-mc-gold animate-pulse tracking-widest hidden">
+                        TARGET SET</div>
+                </div>
+
+                <!-- Start View -->
+                <div id="startView" class="w-full flex flex-col items-center">
+                    <!-- Scan Section -->
+                    <div class="scan-section">
+                        <div class="scan-button-container">
+                            <div class="scan-waves">
+                                <div class="wave"></div>
+                                <div class="wave"></div>
+                            </div>
+                            <div class="scan-button" onclick="openScanner()">
+                                <svg viewBox="0 0 24 24">
+                                    <path
+                                        d="M2 2h6v6H2V2zm2 2v2h2V4H4zM2 16h6v6H2v-6zm2 2v2h2v-2H4zM16 2h6v6h-6V2zm2 2v2h2V4h-2zm-2 12h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm-2-2h2v2h-2v-2z" />
+                                    <rect x="13" y="13" width="2" height="2" />
+                                    <rect x="19" y="13" width="2" height="2" />
+                                    <rect x="13" y="19" width="2" height="2" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Menu Buttons -->
+                    <div class="menu-buttons">
+                        <div class="menu-btn" onclick="openScanner()">SCAN QR CODE</div>
+                        <div class="menu-btn" onclick="showManualInput()">MANUAL OVERRIDE</div>
+                    </div>
+                </div>
+
+                <!-- Manual Input -->
+                <div class="manual-input" id="manualInput">
+                    <input type="text" id="manualCode" class="code-input" placeholder="XXXXXX" maxlength="20">
+                    <div class="button-row">
+                        <button class="action-btn" onclick="hideManualInput()">CANCEL</button>
+                        <button class="action-btn" onclick="submitManualCode()">VERIFY</button>
+                    </div>
+                </div>
+
+                <!-- Scanner Area -->
+                <div class="scanner-area" id="scannerArea">
+                    <div class="scanner-view">
+                        <div id="reader"></div>
+                        <div class="scanner-guide"></div>
+                    </div>
+                </div>
+
+            </div> <!-- End Wooden Panel -->
+        </div> <!-- End Panel Wrapper -->
+
+        <!-- Bottom Spacer (For Symmetry) -->
+        <div class="bottom-spacer"></div>
+
+    </div>
+
+    <script>
+        // Polyfill for formats if library fails to define them globally
+        if (typeof Html5QrcodeSupportedFormats === 'undefined') {
+            window.Html5QrcodeSupportedFormats = { QR_CODE: 0 };
+        }
+
+        let html5QrCode = null;
+        let processing = false;
+        let targetsFound = 0;
+
+        let memeData = [];
+        let logicalData = [];
+        let graphData = null;
+
+        async function ensureLibraryLoaded() {
+            if (typeof Html5Qrcode !== 'undefined') return true;
+
+            console.log('🔄 Attempting to lazy-load scanner library...');
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = "https://unpkg.com/html5-qrcode/html5-qrcode.min.js";
+                script.onload = () => {
+                    console.log('✅ Library loaded via fallback');
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    console.error('❌ Fallback library load failed');
+                    resolve(false);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // Load verification data
+        // Load verification data with robustness
+        async function loadData() {
+            try {
+                const results = await Promise.allSettled([
+                    fetch('meme.json'),
+                    fetch('logical.json'),
+                    fetch('graph.json')
+                ]);
+
+                // Handle Meme Data
+                if (results[0].status === 'fulfilled' && results[0].value.ok) {
+                    try { memeData = await results[0].value.json(); }
+                    catch (e) { console.error("Failed to parse meme.json", e); }
+                }
+
+                // Handle Logical Data
+                if (results[1].status === 'fulfilled' && results[1].value.ok) {
+                    try { logicalData = await results[1].value.json(); }
+                    catch (e) { console.error("Failed to parse logical.json", e); }
+                }
+
+                // Handle Graph Data
+                if (results[2].status === 'fulfilled' && results[2].value.ok) {
+                    try { graphData = await results[2].value.json(); }
+                    catch (e) { console.error("Failed to parse graph.json", e); }
+                }
+
+                console.log("Data Loaded:", {
+                    memes: memeData ? memeData.length : 0,
+                    logic: logicalData ? logicalData.length : 0,
+                    hasGraph: !!graphData
+                });
+
+                if (!graphData || !Array.isArray(memeData) || !Array.isArray(logicalData)) {
+                    console.warn("Data is incomplete. Scanner validation may fail.");
+                }
+
+            } catch (err) {
+                console.error("Critical error in loadData:", err);
+                alert("Data files could not be loaded. Open this project via a local server (http://localhost), not file://");
+            }
+        }
+
+        // Global variables for scanner
+        let currentCssScale = 1;
+        let initialPinchDistance = null;
+        let initialPinchZoom = null;
+
+        window.onload = async function () {
+            console.log('🚀 Page Loading Initialization...');
+            if (typeof initGame === 'function') initGame();
+
+            // Wait for data to load before doing anything else
+            await loadData();
+
+            // Guidance Optimization: Show target if exists
+            if (window.gameState && gameState.targetNode) {
+                const display = document.getElementById('target-display');
+                if (display && graphData) {
+                    const targetName = graphData.location_names?.[gameState.targetNode] || gameState.targetNode;
+                    display.innerText = "TARGET: " + targetName;
+                    display.classList.remove('hidden');
+                }
+            }
+
+            const closeBtn = document.getElementById('closeBtn');
+            if (closeBtn) closeBtn.style.display = 'none';
+
+            // 🆕 AUTO-DETECT URL PARAMETERS (memeid=, queid=, or node=)
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const memeId = urlParams.get('memeid');
+                const queId = urlParams.get('queid');
+                const nodeId = urlParams.get('node');
+
+                if (memeId || queId || nodeId) {
+                    const finalId = (memeId || queId || nodeId).toUpperCase();
+                    console.log('📡 Auto-detected parameter:', finalId);
+
+                    // Show a quick "Checking..." feedback
+                    const display = document.getElementById('target-display');
+                    if (display) {
+                        display.innerText = "CHECKING SIGNAL...";
+                        display.classList.remove('hidden');
+                    }
+
+                    // Process result after a short delay for better UX
+                    setTimeout(() => handleScanResult(finalId), 800);
+                }
+            } catch (e) {
+                console.error('❌ Error processing URL parameters:', e);
+            }
+        }
+
+        async function openScanner() {
+            console.log('🔘 Scan Button Clicked');
+            processing = false;
+
+            const isLoaded = await ensureLibraryLoaded();
+            if (!isLoaded) {
+                alert('⚠️ SCANNER ERROR\n\nThe scanning library could not be loaded. Please check your internet connection or use Manual Override.');
+                return;
+            }
+
+            const startView = document.getElementById('startView');
+            const scannerArea = document.getElementById('scannerArea');
+            const pirateSkull = document.querySelector('.pirate-skull');
+            const closeBtn = document.getElementById('closeBtn');
+
+            if (!startView || !scannerArea) return;
+
+            console.log('🛠️ Transitioning UI to Scanner Mode...');
+            startView.style.display = 'none';
+            if (pirateSkull) pirateSkull.style.display = 'none';
+            scannerArea.classList.add('active');
+            if (closeBtn) closeBtn.style.display = 'flex';
+
+            setTimeout(() => {
+                initScanner();
+            }, 100);
+        }
+
+        function closeScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    resetView();
+                }).catch(() => {
+                    resetView();
+                });
+            } else {
+                resetView();
+            }
+        }
+
+        function resetView() {
+            document.getElementById('scannerArea').classList.remove('active');
+            document.getElementById('startView').style.display = 'flex'; // Changed to flex to center content
+            document.querySelector('.pirate-skull').style.display = 'block';
+            document.getElementById('closeBtn').style.display = 'none';
+            hideManualInput();
+        }
+
+        async function initScanner() {
+            try {
+                // First check if we're in a secure context
+                if (!window.isSecureContext) {
+                    alert("Camera requires secure context. Use https:// or http://localhost");
+                    resetView();
+                    return;
+                }
+
+                // Check if library is loaded
+                if (typeof Html5Qrcode !== 'function') {
+                    alert("QR scanner library failed to load. Check internet/CDN access and refresh.");
+                    resetView();
+                    return;
+                }
+
+                // Check camera permissions first (Permissions API)
+                try {
+                    const permissionResult = await navigator.permissions.query({ name: 'camera' });
+                    if (permissionResult.state === 'denied') {
+                        alert('Camera access is denied. Please enable camera access in your browser settings.');
+                        resetView();
+                        return;
+                    }
+                } catch (permError) {
+                    console.log('Permissions API not supported, continuing...');
+                }
+
+                // Test if camera is available
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                    alert('Camera APIs are not available in this browser.');
+                    resetView();
+                    return;
+                }
+
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const hasCamera = devices.some(device => device.kind === 'videoinput');
+
+                if (!hasCamera) {
+                    alert('No camera found on this device.');
+                    resetView();
+                    return;
+                }
+
+                // Reset any existing scanner
+                if (html5QrCode) {
+                    try {
+                        await html5QrCode.stop();
+                        await html5QrCode.clear();
+                    } catch (e) {
+                        console.log('Error clearing previous scanner:', e);
+                    }
+                    html5QrCode = null;
+                }
+
+                currentCssScale = 1;
+                const readerElement = document.getElementById('reader');
+                readerElement.innerHTML = ''; // Clear previous
+
+                // Create new scanner instance
+                html5QrCode = new Html5Qrcode("reader");
+
+                // Config optimized for compatibility
+                const config = {
+                    fps: 15,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+                if (window.Html5QrcodeSupportedFormats &&
+                    typeof window.Html5QrcodeSupportedFormats.QR_CODE !== 'undefined') {
+                    config.formatsToSupport = [window.Html5QrcodeSupportedFormats.QR_CODE];
+                }
+
+                console.log('📷 Starting camera sequence...');
+
+                // Try rear camera first, fallback to any camera
+                try {
+                    await html5QrCode.start(
+                        { facingMode: { exact: "environment" } },
+                        config,
+                        handleScanResult
+                    );
+                    console.log('✅ Rear camera started');
+                } catch (rearCameraError) {
+                    console.log('Rear camera failed, trying any environment camera...', rearCameraError);
+                    try {
+                        await html5QrCode.start(
+                            { facingMode: "environment" },
+                            config,
+                            handleScanResult
+                        );
+                    } catch (anyEnvError) {
+                        console.log('Environment camera failed, trying default...', anyEnvError);
+                        await html5QrCode.start(
+                            { facingMode: "user" }, // Fallback to front
+                            config,
+                            handleScanResult
+                        );
+                    }
+                }
+
+                // Video element adjustments
+                const video = readerElement.querySelector('video');
+                if (video) {
+                    video.style.width = '100%';
+                    video.style.height = '100%';
+                    video.style.objectFit = 'cover';
+
+                    video.onloadedmetadata = () => {
+                        console.log('✅ Video loaded, resolution:', video.videoWidth, 'x', video.videoHeight);
+                        if (typeof setupZoom === 'function') setupZoom(video);
+                    };
+                }
+
+                console.log('✅ QR Scanner initialized successfully');
+
+            } catch (err) {
+                console.error("❌ Camera error:", err);
+
+                let errorMessage = "⚠️ Camera access failed\n\n";
+                if (err.name === 'NotAllowedError') {
+                    errorMessage += "Camera permission denied. Please allow camera access and try again.";
+                } else if (err.name === 'NotFoundError') {
+                    errorMessage += "No camera found on this device.";
+                } else if (err.name === 'NotReadableError') {
+                    errorMessage += "Camera is already in use by another application.";
+                } else {
+                    errorMessage += "Please check permissions or use Manual Override.";
+                }
+
+                alert(errorMessage);
+                resetView();
+            }
+        }
+
+
+
+
+
+        function setupZoom(videoElement) {
+            const scannerArea = document.getElementById('scannerArea');
+            let track = null;
+            let capabilities = {};
+
+            // Hardware zoom check
+            if (videoElement.srcObject) {
+                const stream = videoElement.srcObject;
+                track = stream.getVideoTracks()[0];
+                if (track && track.getCapabilities) {
+                    capabilities = track.getCapabilities();
+                    console.log('📷 Camera capabilities:', capabilities);
+                }
+            }
+
+            // Function to apply zoom smoothly
+            const applyZoom = async (value) => {
+                if (!track || !capabilities.zoom) return;
+
+                try {
+                    const zoomValue = Math.min(Math.max(value, capabilities.zoom.min), capabilities.zoom.max);
+                    await track.applyConstraints({
+                        advanced: [{ zoom: zoomValue }]
+                    });
+                    console.log('🔍 Zoom applied:', zoomValue);
+                } catch (err) {
+                    console.error('❌ Error applying zoom:', err);
+                }
+            };
+
+            // ENHANCED PINCH TO ZOOM
+            scannerArea.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    initialPinchDistance = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+
+                    if (track && capabilities.zoom) {
+                        const currentSettings = track.getSettings();
+                        initialPinchZoom = currentSettings.zoom || capabilities.zoom.min;
+                    } else {
+                        initialPinchZoom = currentCssScale;
+                    }
+                }
+            }, { passive: false });
+
+            scannerArea.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && initialPinchDistance !== null) {
+                    e.preventDefault();
+
+                    const currentDistance = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+
+                    if (track && capabilities.zoom) {
+                        // HARDWARE ZOOM (Better quality)
+                        const zoomDelta = (currentDistance - initialPinchDistance) / 100;
+                        applyZoom(initialPinchZoom + zoomDelta);
+                    } else {
+                        // CSS FALLBACK ZOOM
+                        const scale = currentDistance / initialPinchDistance;
+                        currentCssScale = Math.max(1, Math.min(5, initialPinchZoom * scale));
+                        videoElement.style.transform = `scale(${currentCssScale})`;
+                    }
+                }
+            }, { passive: false });
+
+            scannerArea.addEventListener('touchend', () => {
+                initialPinchDistance = null;
+                initialPinchZoom = null;
+            }, { passive: false });
+
+            // Log zoom support
+            if (capabilities.zoom) {
+                console.log('✅ Hardware zoom supported:', capabilities.zoom);
+            } else {
+                console.log('⚠️ Hardware zoom not supported, using CSS fallback');
+            }
+        }
+
+        function showManualInput() {
+            processing = false; // Reset to allow manual override even if scanner got stuck
+            document.getElementById('manualInput').classList.add('active');
+            document.getElementById('manualCode').focus();
+        }
+
+        function hideManualInput() {
+            document.getElementById('manualInput').classList.remove('active');
+            document.getElementById('manualCode').value = '';
+        }
+
+        async function submitManualCode() {
+            const codeInput = document.getElementById('manualCode');
+            const code = codeInput.value.trim();
+            if (code.length === 0) {
+                alert("🏴‍☠️ Enter a code or scan ID!");
+                return;
+            }
+
+            console.log('⌨️ Manual Code Submitted:', code);
+
+            // If the scanner was busy, we override it for manual input
+            if (processing) {
+                console.log('⚠️ Overriding busy scanner for manual input');
+                processing = false;
+            }
+
+            await handleScanResult(code);
+
+            // Only hide UI if processing has finished (e.g. error shown and reset)
+            // or if no redirect happened yet
+            if (!processing) {
+                hideManualInput();
+            }
+        }
+
+        function normalizeScannedId(rawText) {
+            let decodedText = String(rawText || '').trim();
+            if (!decodedText) return '';
+
+            // 1. Handle MANUALLY typed strings (remove spaces for format checking)
+            // But keep a copy of the upper-case version
+            let scannedId = decodedText.toUpperCase();
+
+            // 2. Extract from MANUAL: prefix if present
+            if (scannedId.startsWith('MANUAL:')) {
+                decodedText = decodedText.split(':')[1].trim();
+                scannedId = decodedText.toUpperCase();
+            }
+
+            // 3. Extract from URL parameters
+            if (decodedText.includes('=')) {
+                try {
+                    const url = new URL(decodedText);
+                    const params = url.searchParams;
+                    const paramId = params.get('memeid') || params.get('queid') || params.get('node') || params.get('linkid');
+                    if (paramId) return paramId.trim().toUpperCase();
+                } catch (e) {
+                    const memeMatch = decodedText.match(/memeid=([^&\s]*)/i);
+                    const queMatch = decodedText.match(/queid=([^&\s]*)/i);
+                    const nodeMatch = decodedText.match(/node=([^&\s]*)/i);
+                    const linkMatch = decodedText.match(/linkid=([^&\s]*)/i);
+                    if (memeMatch) return memeMatch[1].trim().toUpperCase();
+                    if (queMatch) return queMatch[1].trim().toUpperCase();
+                    if (nodeMatch) return nodeMatch[1].trim().toUpperCase();
+                    if (linkMatch) return linkMatch[1].trim().toUpperCase();
+                }
+            }
+
+            // 4. Compact token extraction (e.g. from raw QR content like "Location A")
+            // This is more forgiving with word boundaries and whitespace
+            const cleanText = decodedText.replace(/\s+/g, ''); // Remove all spaces for clean match
+            const directToken = cleanText.match(/([A-HJ]|M\d{1,2}|L\d{1,2}|END)/i);
+            if (directToken && directToken[1]) {
+                scannedId = directToken[1].toUpperCase();
+            }
+
+            return scannedId;
+        }
+
+        async function handleScanResult(decodedText) {
+            if (processing) return;
+            processing = true;
+
+            try {
+                let scannedId = normalizeScannedId(decodedText);
+                console.log('🔍 Raw scanned input:', decodedText);
+
+                console.log('📌 Final scanned ID:', scannedId);
+
+
+                // 2. IMMEDIATE FEEDBACK
+                triggerFeedback();
+
+                // 3. DETECT INTENT: Check data sources
+                const isMapLocation = graphData?.location_names?.[scannedId];
+                const isMemeItem = (memeData || []).find(m => m.memid && m.memid.toUpperCase() === scannedId);
+                const isLogicItem = (logicalData || []).find(l => l.queid && l.queid.toUpperCase() === scannedId);
+
+                if (isMapLocation || scannedId === "E") {
+                    console.log("📍 Location Detected:", isMapLocation || "Special Node E");
+
+                    // --- PATH ENFORCEMENT ---
+                    if (window.gameState && gameState.targetNode && scannedId !== gameState.targetNode) {
+                        const targetName = graphData?.location_names?.[gameState.targetNode] || gameState.targetNode;
+                        alert(`❌ WRONG DESTINATION\n\nYour map points to: ${targetName}\nBut you scanned: ${isMapLocation || scannedId}\n\nFollow the path on your map!`);
+                        processing = false;
+                        return;
+                    }
+
+                    // Update Global State
+                    if (window.gameState) {
+                        gameState.currentNode = scannedId;
+                        gameState.targetNode = null;
+
+                        // Hook for finale: Admin Block (E) triggers Level 4
+                        if (scannedId === "E") {
+                            console.log("🏁 Level 4 Finale Triggered!");
+                            gameState.currentLevel = 4;
+                        }
+
+                        if (typeof saveGame === 'function') saveGame();
+                    }
+
+                    if (window.playSound) playSound('success');
+                    setTimeout(() => window.location.replace('location.html?node=' + scannedId), 300);
+                    return;
+                }
+
+                // --- LOGIC GATE 2: LEVEL 2 (Items) ---
+                if (isMemeItem || isLogicItem) {
+                    console.log("🏴‍☠️ Item Detected. Moving to Verification...");
+
+                    if (isMemeItem) {
+                        localStorage.removeItem('lastScannedLogic');
+                        localStorage.setItem('lastScannedMeme', JSON.stringify(isMemeItem));
+                    } else {
+                        localStorage.removeItem('lastScannedMeme');
+                        localStorage.setItem('lastScannedLogic', JSON.stringify(isLogicItem));
+                    }
+
+                    if (window.playSound) playSound('level_up');
+                    setTimeout(() => window.location.replace('verification.html'), 600);
+                    return;
+                }
+
+                // --- LOGIC GATE 3: INVALID CODE ---
+                console.warn('❌ Invalid code scanned:', scannedId);
+                console.log('📊 Available codes:', {
+                    locations: Object.keys(graphData?.location_names || {}),
+                    memes: (memeData || []).map(m => m.memid),
+                    logical: (logicalData || []).map(l => l.queid)
+                });
+
+                const loadHint = (!graphData || !memeData.length || !logicalData.length)
+                    ? "\n\nData not loaded. Serve this app with localhost and refresh."
+                    : "";
+
+                alert(`❌ SIGNAL NOT CAUGHT!\n\nScanned: "${scannedId}"\n\nThis is not a valid treasure code!\n\nValid formats:\n• Location: A, B, C, D, F, G, H, J\n• Meme: M1-M13\n• Logic: L1-L10${loadHint}\n\nTry scanning again!`);
+                processing = false;
+
+            } catch (err) {
+                console.error("❌ Critical Scan Error:", err);
+                alert(`⚠️ SCAN FAILED\n\nError: ${err.message}\n\nPlease try scanning again or use Manual Override.`);
+                processing = false;
+            }
+        }
+
+        function triggerFeedback() {
+            const flash = document.getElementById('flash');
+            if (flash) {
+                flash.style.opacity = '1';
+                setTimeout(() => flash.style.opacity = '0', 200);
+            }
+            if (window.playSound) playSound('scan');
+        }
+
+    </script>
+    <style>
+        @keyframes popIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+
+</body>
+
+</html>

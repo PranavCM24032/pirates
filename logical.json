@@ -1,0 +1,112 @@
+[
+    {
+        "queid": "L1",
+        "que": "Deepika is Ranveer's wife. Ranveer is Amitabh's son. How is Deepika related to Amitabh?",
+        "ans": "Daughter-in-law",
+        "options": [
+            "Daughter",
+            "Daughter-in-law",
+            "Sister",
+            "Niece"
+        ]
+    },
+    {
+        "queid": "L2",
+        "que": "Shah Rukh is Kareena's brother. Kareena is Ranbir's mother. Ranbir calls Shah Rukh what?",
+        "ans": "Chacha",
+        "options": [
+            "Chacha",
+            "Mama",
+            "Brother",
+            "Cousin"
+        ]
+    },
+    {
+        "queid": "L3",
+        "que": "Clues: Salman sits at one of the ends. Shah Rukh is sitting immediately to the right of Salman. Aamir is sitting somewhere to the left of Ranbir. Ranveer is sitting at the other end. Hrithik is sitting between Shah Rukh and Aamir. Left se third position par kaun baitha hai?",
+        "ans": "Hrithik",
+        "options": [
+            "Shah Rukh",
+            "Hrithik",
+            "Aamir",
+            "Ranbir"
+        ]
+    },
+    {
+        "queid": "L4",
+        "que": "Clues: Salman sits at one of the ends. Shah Rukh is sitting immediately to the right of Salman. Aamir is sitting somewhere to the left of Ranbir. Ranveer is sitting at the other end. Hrithik is sitting between Shah Rukh and Aamir. Shah Rukh ke right me kaun hai?",
+        "ans": "Hrithik",
+        "options": [
+            "Hrithik",
+            "Aamir",
+            "Ranbir",
+            "Ranveer"
+        ]
+    },
+    {
+        "queid": "L5",
+        "que": "Clues: Salman sits at one of the ends. Shah Rukh is sitting immediately to the right of Salman. Aamir is sitting somewhere to the left of Ranbir. Ranveer is sitting at the other end. Hrithik is sitting between Shah Rukh and Aamir. Hrithik aur Ranbir ke beech kaun hai?",
+        "ans": "Aamir",
+        "options": [
+            "Shah Rukh",
+            "Aamir",
+            "Salman",
+            "Koi nahi"
+        ]
+    },
+    {
+        "queid": "L6",
+        "que": "Ranveer ek movie poster dekh raha hai. Usse poocha gaya — 'Yeh poster kis ka hai?' Ranveer bolta hai: 'Na woh mera bhai hai, na mera beta, par us actor ki maa meri maa ki beti hai.' Poster kis ka hai?",
+        "ans": "Ranveer ka beta",
+        "options": [
+            "Ranveer khud",
+            "Ranveer ka beta",
+            "Ranveer ki maa",
+            "Ranveer ka dost"
+        ]
+    },
+    {
+        "queid": "L7",
+        "que": "Alia ek photo dekhkar kehti hai: 'Is actor ki maa meri maa ki beti hai.' Photo me kaun hai?",
+        "ans": "Alia ka beta",
+        "options": [
+            "Alia khud",
+            "Alia ka beta",
+            "Alia ki sister",
+            "Alia ki maa"
+        ]
+    },
+    {
+        "queid": "L8",
+        "que": "Kareena kehti hai: 'Is actress ka father meri maa ka husband hai.' Actress kaun hai?",
+        "ans": "Kareena ki sister",
+        "options": [
+            "Kareena ki sister",
+            "Kareena khud",
+            "Kareena ki beti",
+            "Kareena ki maa"
+        ]
+    },
+    {
+        "queid": "L9",
+        "que": "P is Q's mother. Q is R's brother. How is P related to R?",
+        "ans": "Mother",
+        "options": [
+            "Mother",
+            "Aunt",
+            "Sister",
+            "Grandmother"
+        ]
+    },
+    {
+        "queid": "L10",
+        "que": "A is B's sister. B is C's father. How is A related to C?",
+        "ans": "Aunt",
+        "options": [
+            "Mother",
+            "Aunt",
+            "Sister",
+            "Grandmother"
+        ]
+    }
+]
