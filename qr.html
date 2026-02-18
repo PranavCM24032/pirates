@@ -464,6 +464,7 @@
             justify-content: center;
             border-radius: 10px;
             z-index: 20;
+            transition: opacity 0.2s ease-out;
         }
 
         .scanner-area.active {
@@ -876,8 +877,8 @@
                         display.classList.remove('hidden');
                     }
 
-                    // Process result after a short delay for better UX
-                    setTimeout(() => handleScanResult(finalId), 800);
+                    // Process result faster
+                    setTimeout(() => handleScanResult(finalId), 200);
                 }
             } catch (e) {
                 console.error('❌ Error processing URL parameters:', e);
@@ -909,7 +910,7 @@
 
             setTimeout(() => {
                 initScanner();
-            }, 100);
+            }, 20);
         }
 
         function closeScanner() {
@@ -994,9 +995,9 @@
                 // Create new scanner instance
                 html5QrCode = new Html5Qrcode("reader");
 
-                // Config optimized for compatibility
+                // Config optimized for speed & smoothness
                 const config = {
-                    fps: 15,
+                    fps: 24,
                     qrbox: { width: 250, height: 250 },
                     aspectRatio: 1.0
                 };
@@ -1165,46 +1166,27 @@
             document.getElementById('manualCode').value = '';
         }
 
-        async function submitManualCode() {
-            const codeInput = document.getElementById('manualCode');
-            const code = codeInput.value.trim();
+        function submitManualCode() {
+            const code = document.getElementById('manualCode').value.trim();
             if (code.length === 0) {
-                alert("🏴‍☠️ Enter a code or scan ID!");
+                alert("Enter a location code or scan ID!");
                 return;
             }
-
-            console.log('⌨️ Manual Code Submitted:', code);
-
-            // If the scanner was busy, we override it for manual input
-            if (processing) {
-                console.log('⚠️ Overriding busy scanner for manual input');
-                processing = false;
-            }
-
-            await handleScanResult(code);
-
-            // Only hide UI if processing has finished (e.g. error shown and reset)
-            // or if no redirect happened yet
-            if (!processing) {
-                hideManualInput();
-            }
+            handleScanResult(code);
+            // Don't close immediately if we hit an error alert
+            if (!processing) hideManualInput();
         }
 
         function normalizeScannedId(rawText) {
-            let decodedText = String(rawText || '').trim();
+            const decodedText = String(rawText || '').trim();
             if (!decodedText) return '';
 
-            // 1. Handle MANUALLY typed strings (remove spaces for format checking)
-            // But keep a copy of the upper-case version
             let scannedId = decodedText.toUpperCase();
 
-            // 2. Extract from MANUAL: prefix if present
-            if (scannedId.startsWith('MANUAL:')) {
-                decodedText = decodedText.split(':')[1].trim();
-                scannedId = decodedText.toUpperCase();
+            if (decodedText.startsWith('MANUAL:')) {
+                return (decodedText.split(':')[1] || '').trim().toUpperCase();
             }
 
-            // 3. Extract from URL parameters
             if (decodedText.includes('=')) {
                 try {
                     const url = new URL(decodedText);
@@ -1223,10 +1205,8 @@
                 }
             }
 
-            // 4. Compact token extraction (e.g. from raw QR content like "Location A")
-            // This is more forgiving with word boundaries and whitespace
-            const cleanText = decodedText.replace(/\s+/g, ''); // Remove all spaces for clean match
-            const directToken = cleanText.match(/([A-HJ]|M\d{1,2}|L\d{1,2}|END)/i);
+            // Accept compact tokens from plain text QR content
+            const directToken = decodedText.match(/\b([A-HJ]|M\d{1,2}|L\d{1,2}|END)\b/i);
             if (directToken && directToken[1]) {
                 scannedId = directToken[1].toUpperCase();
             }
@@ -1253,13 +1233,13 @@
                 const isMemeItem = (memeData || []).find(m => m.memid && m.memid.toUpperCase() === scannedId);
                 const isLogicItem = (logicalData || []).find(l => l.queid && l.queid.toUpperCase() === scannedId);
 
-                if (isMapLocation || scannedId === "E") {
-                    console.log("📍 Location Detected:", isMapLocation || "Special Node E");
+                if (isMapLocation) {
+                    console.log("📍 Location Detected:", isMapLocation);
 
                     // --- PATH ENFORCEMENT ---
                     if (window.gameState && gameState.targetNode && scannedId !== gameState.targetNode) {
                         const targetName = graphData?.location_names?.[gameState.targetNode] || gameState.targetNode;
-                        alert(`❌ WRONG DESTINATION\n\nYour map points to: ${targetName}\nBut you scanned: ${isMapLocation || scannedId}\n\nFollow the path on your map!`);
+                        alert(`❌ WRONG DESTINATION\n\nYour map points to: ${targetName}\nBut you scanned: ${isMapLocation}\n\nFollow the path on your map!`);
                         processing = false;
                         return;
                     }
@@ -1271,7 +1251,6 @@
 
                         // Hook for finale: Admin Block (E) triggers Level 4
                         if (scannedId === "E") {
-                            console.log("🏁 Level 4 Finale Triggered!");
                             gameState.currentLevel = 4;
                         }
 
@@ -1279,7 +1258,7 @@
                     }
 
                     if (window.playSound) playSound('success');
-                    setTimeout(() => window.location.replace('location.html?node=' + scannedId), 300);
+                    setTimeout(() => window.location.replace('location.html?node=' + scannedId), 100);
                     return;
                 }
 
@@ -1296,7 +1275,7 @@
                     }
 
                     if (window.playSound) playSound('level_up');
-                    setTimeout(() => window.location.replace('verification.html'), 600);
+                    setTimeout(() => window.location.replace('verification.html'), 150);
                     return;
                 }
 

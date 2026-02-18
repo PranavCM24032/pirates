@@ -6,6 +6,7 @@
 const SoundSystem = (() => {
     let audioCtx = null;
     let masterGain = null;
+    let sfxGain = null;
     let ambientGain = null;
     let ambientStarted = false;
     let ambientTimer = null;
@@ -14,16 +15,22 @@ const SoundSystem = (() => {
     let lastMoveAt = 0;
     let lastX = 0;
     let lastY = 0;
+    const AUTO_UI_BEEPS = false; // Keep ambient music, disable constant hover/click beeps
 
-    const MELODY_NOTES = [261.63, 329.63, 392.0, 349.23, 293.66, 392.0, 329.63, 261.63];
+    const MELODY_NOTES = [329.63, 392.0, 440.0, 493.88, 440.0, 392.0, 329.63, 293.66];
     const SAFE_MIN_VOLUME = 0.0001;
 
     const initContext = () => {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.35;
+            masterGain.gain.value = 0.30;
             masterGain.connect(audioCtx.destination);
+
+            // Dedicated SFX bus so clicks/beeps stay quieter than background music.
+            sfxGain = audioCtx.createGain();
+            sfxGain.gain.value = 0.45;
+            sfxGain.connect(masterGain);
 
             ambientGain = audioCtx.createGain();
             ambientGain.gain.value = 0.0;
@@ -36,7 +43,7 @@ const SoundSystem = (() => {
 
     const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 
-    const createTone = (frequency, type, startTime, duration, volume = 0.1, destination = masterGain) => {
+    const createTone = (frequency, type, startTime, duration, volume = 0.1, destination = sfxGain) => {
         if (!audioCtx || !destination || duration <= 0) return;
 
         const osc = audioCtx.createOscillator();
@@ -56,7 +63,7 @@ const SoundSystem = (() => {
         osc.stop(startTime + duration);
     };
 
-    const createNote = (frequency, startTime, duration, volume = 0.07, destination = masterGain) => {
+    const createNote = (frequency, startTime, duration, volume = 0.07, destination = sfxGain) => {
         if (!audioCtx || !destination) return;
 
         const osc = audioCtx.createOscillator();
@@ -92,7 +99,7 @@ const SoundSystem = (() => {
         const now = audioCtx.currentTime;
         ambientGain.gain.cancelScheduledValues(now);
         ambientGain.gain.setValueAtTime(0.0, now);
-        ambientGain.gain.linearRampToValueAtTime(0.65, now + 0.5); // Fast fade in to 65% volume
+        ambientGain.gain.linearRampToValueAtTime(0.38, now + 0.7); // Softer fade in for calmer background music
 
         // Drone layer for subtle "cave/overworld" feel.
         const drone1 = audioCtx.createOscillator();
@@ -100,14 +107,14 @@ const SoundSystem = (() => {
         const droneGain = audioCtx.createGain();
         const droneFilter = audioCtx.createBiquadFilter();
 
-        drone1.type = 'triangle';
+        drone1.type = 'sine'; // Softer than triangle
         drone2.type = 'sine';
         drone1.frequency.value = 65.41;
         drone2.frequency.value = 98.0;
 
-        droneGain.gain.value = 0.12; // Increased from 0.04
+        droneGain.gain.value = 0.025; // Slight boost since sine is quieter
         droneFilter.type = 'lowpass';
-        droneFilter.frequency.value = 520;
+        droneFilter.frequency.value = 320; // Lower cutoff for "murky" sound
         droneFilter.Q.value = 0.4;
 
         drone1.connect(droneGain);
@@ -135,46 +142,62 @@ const SoundSystem = (() => {
                     if (e.data.type === 'play_note') {
                         if (!audioCtx) return;
 
-                        // DSA Optimization: Drop stale notes if the thread was blocked
+                        /* 
+                        // DSA Optimization REMOVED: Synchronization mismatch between Worker and Main thread timers caused all notes to drop.
+                        // The worker's performance.now() starts from 0 when created, lagging behind main thread.
                         const now = performance.now();
                         if (e.data.timestamp && (now - e.data.timestamp > 150)) {
                             console.warn('Dropping stale background note to maintain website smoothness');
                             return;
                         }
+                        */
 
                         const t = audioCtx.currentTime + 0.05;
                         const dur = e.data.duration / 1000;
                         const priority = e.data.priority || 1;
 
                         // Main Note Synth (Soft Sine/Triangle)
+                        // MINECRAFT-STYLE PIANO SYNTH
+                        // Layer 1: Sine (Fundamental - Soft)
                         const osc = audioCtx.createOscillator();
                         const g = audioCtx.createGain();
-
                         osc.type = 'sine';
                         osc.frequency.setValueAtTime(e.data.note, t);
 
-                        // Subtle Minecraft Vibrato
-                        const vGain = audioCtx.createGain();
-                        const vOsc = audioCtx.createOscillator();
-                        vGain.gain.value = priority === 2 ? 5 : 3;
-                        vOsc.frequency.value = priority === 2 ? 6 : 4;
-                        vOsc.connect(vGain);
-                        vGain.connect(osc.frequency);
+                        // Layer 2: Triangle (Harmonics - "Tine" sound, lower volume)
+                        const osc2 = audioCtx.createOscillator();
+                        const g2 = audioCtx.createGain();
+                        osc2.type = 'triangle';
+                        osc2.frequency.setValueAtTime(e.data.note, t);
+                        // Slight detune for analog warmth
+                        osc2.detune.setValueAtTime(Math.random() * 6 - 3, t);
 
-                        // Smooth Volume Envelope (No popping)
-                        const maxVol = priority === 2 ? 0.18 : 0.12;
+                        // Envelope: Percussive Attack, Long Decay (Piano-like)
+                        const maxVol = priority === 2 ? 0.08 : 0.05;
+
+                        // Main Body Envelope
                         g.gain.setValueAtTime(0, t);
-                        g.gain.linearRampToValueAtTime(maxVol, t + 0.1); // Immediate fade in
-                        g.gain.linearRampToValueAtTime(0, t + dur);     // Fade out
+                        g.gain.linearRampToValueAtTime(maxVol, t + 0.02); // Fast attack
+                        g.gain.exponentialRampToValueAtTime(maxVol * 0.6, t + 0.3); // Decay to sustain level
+                        g.gain.exponentialRampToValueAtTime(0.001, t + dur + 1.5); // Long release tail
+
+                        // Harmonic Layer Envelope (fades faster)
+                        g2.gain.setValueAtTime(0, t);
+                        g2.gain.linearRampToValueAtTime(maxVol * 0.3, t + 0.02);
+                        g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.8);
 
                         osc.connect(g);
+                        osc2.connect(g2);
+
                         g.connect(ambientGain);
+                        g2.connect(ambientGain);
 
-                        vOsc.start(t);
                         osc.start(t);
+                        osc2.start(t);
 
-                        vOsc.stop(t + dur + 0.1);
-                        osc.stop(t + dur + 0.1);
+                        // Stop slightly later to allow tail to ring out
+                        osc.stop(t + dur + 2.0);
+                        osc2.stop(t + dur + 2.0);
                     }
                 };
                 audioWorker.postMessage({ action: 'start', index: savedIndex });
@@ -197,7 +220,7 @@ const SoundSystem = (() => {
             createNote(note, t, 0.9, 0.028, ambientGain);
             createNote(note * 0.5, t, 1.1, 0.014, ambientGain);
             i += 1;
-        }, 1300);
+        }, 1000);
     };
 
     const stopAmbient = () => {
@@ -301,12 +324,13 @@ const SoundSystem = (() => {
         const clickHandler = (e) => {
             unlockAndStart();
             const target = e.target && e.target.closest ? e.target.closest(interactives) : null;
-            if (target) {
+            if (AUTO_UI_BEEPS && target) {
                 play('click', { intensity: pointerSensitivity });
             }
         };
 
         const hoverHandler = (e) => {
+            if (!AUTO_UI_BEEPS) return;
             const target = e.target && e.target.closest ? e.target.closest(interactives) : null;
             if (!target) return;
             const nowMs = Date.now();

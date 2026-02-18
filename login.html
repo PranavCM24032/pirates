@@ -584,7 +584,7 @@
 
                     if (window.playSound) playSound('level_up');
 
-                    setTimeout(() => navigateNext(), 2200);
+                    setTimeout(() => navigateNext(), 400); // Drastically reduced delay
                 } else {
                     if (window.playSound) playSound('error');
                     alert("INVALID CREDENTIALS!");
@@ -595,4 +595,3 @@
 </body>
 
 </html>
-

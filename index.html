@@ -115,7 +115,7 @@
 
             let progress = 0;
             const interval = setInterval(() => {
-                progress += Math.random() * 5;
+                progress += Math.random() * 15; // Faster increments
                 if (progress >= 100) {
                     progress = 100;
                     clearInterval(interval);
@@ -127,11 +127,11 @@
                         } else {
                             window.location.replace('displaycrew.html');
                         }
-                    }, 800);
+                    }, 250); // Reduced delay
                 }
                 loadingBar.style.width = progress + '%';
                 loadingPercent.textContent = Math.floor(progress) + '%';
-            }, 100);
+            }, 50); // Half the interval time
         });
     </script>
 </body>

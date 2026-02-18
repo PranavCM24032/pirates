@@ -36,14 +36,14 @@ function navigateTo(url) {
             window.location.href = url;
         });
     } else {
-        // Fallback smooth transition
-        document.body.style.transition = 'opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), filter 0.8s ease';
+        // Fallback smooth transition - much faster
+        document.body.style.transition = 'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease';
         document.body.style.opacity = '0';
-        document.body.style.filter = 'blur(15px) brightness(0.5)';
+        document.body.style.filter = 'blur(5px) brightness(0.5)';
 
         setTimeout(() => {
             window.location.replace(url);
-        }, 700);
+        }, 300);
     }
 }
 
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const x = (e.clientX / window.innerWidth - 0.5);
                 const y = (e.clientY / window.innerHeight - 0.5);
 
-                const bgTransform = `translate(${x * -20}px, ${y * -20}px)`;
+                const bgTransform = `translate3d(${x * -20}px, ${y * -20}px, 0)`; // use translate3d for GPU accel
                 bgTargets.forEach(el => el.style.transform = bgTransform);
 
                 const contentTransform = `perspective(1000px) rotateX(${y * -5}deg) rotateY(${x * 5}deg) translateZ(10px)`;
@@ -440,8 +440,8 @@ function initClientTimer() {
         }
     }
 
-    // Sync fast (100ms) to look smooth
-    const timerId = setInterval(updateClientTimer, 100);
+    // Sync efficiently (250ms is enough for a ticking clock to feel live)
+    const timerId = setInterval(updateClientTimer, 250);
     updateClientTimer(); // Initial call
 
     // Cleanup timer on unload to prevent memory leaks

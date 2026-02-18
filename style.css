@@ -61,18 +61,18 @@
 }
 
 ::view-transition-old(background-image) {
-    animation: 1.2s cubic-bezier(0.4, 0, 0.2, 1) both morph-exit;
+    animation: 0.6s cubic-bezier(0.4, 0, 0.2, 1) both morph-exit;
     z-index: 1;
 }
 
 ::view-transition-new(background-image) {
-    animation: 1.2s cubic-bezier(0.4, 0, 0.2, 1) both morph-enter;
+    animation: 0.6s cubic-bezier(0.4, 0, 0.2, 1) both morph-enter;
     z-index: 2;
 }
 
 ::view-transition-old(main-logo),
 ::view-transition-new(main-logo) {
-    animation: 1.2s cubic-bezier(0.22, 1, 0.36, 1) both logo-morph;
+    animation: 0.6s cubic-bezier(0.22, 1, 0.36, 1) both logo-morph;
 }
 
 @keyframes morph-enter {
@@ -106,7 +106,7 @@
 }
 
 .page-transition-active {
-    animation: pageMorphIn 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: pageMorphIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .parchment-panel {
@@ -263,8 +263,8 @@ body {
     /* 3D Camera Perspective */
     perspective: 1200px;
     transform-style: preserve-3d;
-    /* Apply base page morph */
-    animation: pageMorphIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    /* Apply base page morph - snappier duration */
+    animation: pageMorphIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* --- LOGIN & PANEL UI SYSTEM --- */
@@ -641,11 +641,11 @@ body,
 
 /* Smooth Page Transitions */
 .page-morph-enter {
-    animation: morph-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: morph-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .page-morph-exit {
-    animation: morph-out 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: morph-out 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* Camera Pan */

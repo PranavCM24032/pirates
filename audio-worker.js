@@ -22,17 +22,30 @@ class BackgroundScheduler {
         this.lastExecutionTime = 0;
         this.performanceMode = 'balanced'; // 'balanced' or 'performance'
 
-        // Optimized Melody: Atmospheric Minecraft-style progression
+        // Balanced Melody: low-volume, energetic, and less piercing loop
+        // Minecraft-inspired Ambient Melody (C form of "Wet Hands" style / Calm 3)
+        // A minor / C Major feel. Slower, more spacious.
         this.melody = [
-            new AudioTask(329.63, 1400, 1), // E4
-            new AudioTask(392.00, 1400, 2), // G4 (Accent)
-            new AudioTask(493.88, 1400, 1), // B4
-            new AudioTask(523.25, 2800, 2), // C5 (Long)
-            new AudioTask(0, 600, 1, true),  // REST
-            new AudioTask(440.00, 1400, 1), // A4
-            new AudioTask(392.00, 1400, 1), // G4
-            new AudioTask(329.63, 1400, 1), // E4
-            new AudioTask(0, 3500, 1, true)  // LONG REST (Atmospheric gap)
+            // Phrase 1
+            new AudioTask(392.00, 2000, 1),  // G4
+            new AudioTask(329.63, 2000, 1),  // E4
+
+            // Phrase 2
+            new AudioTask(261.63, 1500, 1),  // C4
+            new AudioTask(293.66, 1500, 1),  // D4
+            new AudioTask(196.00, 3000, 2),  // G3 (Deep root)
+
+            // Breath
+            new AudioTask(0, 1000, 1, true), // Rest
+
+            // Phrase 3 (Resolution)
+            new AudioTask(261.63, 1500, 1),  // C4
+            new AudioTask(329.63, 1500, 1),  // E4
+            new AudioTask(493.88, 2000, 2),  // B4 (Maj7 feel)
+            new AudioTask(392.00, 3000, 1),  // G4
+
+            // Long Rest for ambiance
+            new AudioTask(0, 4000, 1, true)
         ];
     }
 

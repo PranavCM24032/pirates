@@ -154,7 +154,7 @@
             padding: 25px 20px;
             opacity: 0;
             transform: scale(0.1) rotate(20deg);
-            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
             display: flex;
             flex-direction: column;
@@ -276,7 +276,7 @@
         // Wait for global.js to load before applying Minecraft textures
         document.addEventListener('DOMContentLoaded', function () {
             // Small delay to ensure global.js is fully loaded
-            setTimeout(applyBountyPageStyles, 100);
+            setTimeout(applyBountyPageStyles, 20);
         });
 
         async function applyBountyPageStyles() {
