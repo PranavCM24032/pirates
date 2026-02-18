@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bounty Pirates - Admin Command</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-gold: #fbbf24;
+            --neon-blue: #3b82f6;
+            --dark-bg: #030712;
+            --card-bg: rgba(17, 24, 39, 0.85);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--dark-bg);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Cyberpunk Grid Background */
+        .cyber-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image:
+                linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .cyber-grid::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, transparent 0%, var(--dark-bg) 90%);
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tab-active {
+            background: rgba(59, 130, 246, 0.15);
+            border-left: 3px solid #3b82f6;
+            color: #fff;
+        }
+
+        .tab-inactive {
+            border-left: 3px solid transparent;
+            color: #94a3b8;
+        }
+
+        .tab-inactive:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <div class="cyber-grid"></div>
+
+    <!-- HEADER -->
+    <header class="glass-panel sticky top-0 z-50 border-b border-blue-900/30">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="images/logo.png" alt="Logo" class="h-8 w-auto drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
+                <div>
+                    <h1
+                        class="text-xl font-bold bg-gradient-to-r from-blue-400 to-amber-300 bg-clip-text text-transparent tracking-widest">
+                        PIRATE<span class="text-white">OS</span>
+                    </h1>
+                    <p class="text-[10px] text-slate-500 font-mono tracking-[0.2em] uppercase">ADMIN COMMAND NODE</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 px-3 py-1 bg-slate-900/50 rounded-full border border-slate-700/50">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span class="text-xs font-mono text-green-400">ONLINE</span>
+                </div>
+
+                <button onclick="refreshData()"
+                    class="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-all border border-blue-500/30">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="flex-1 max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- SIDEBAR -->
+        <aside class="lg:col-span-3 space-y-4">
+
+            <!-- Stats Cards -->
+            <div class="glass-panel p-5 rounded-xl border-l-4 border-amber-500">
+                <h3 class="text-slate-500 text-xs font-bold uppercase tracking-wider">Top Crew</h3>
+                <p id="topCrew" class="text-lg font-bold text-white mt-1 truncate">---</p>
+                <p id="topScore" class="text-2xl font-mono text-amber-400">0 PTS</p>
+            </div>
+
+            <div class="glass-panel p-5 rounded-xl border-l-4 border-blue-500">
+                <h3 class="text-slate-500 text-xs font-bold uppercase tracking-wider">Active Crews</h3>
+                <p id="activeTeams" class="text-3xl font-mono text-white mt-1">0</p>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="glass-panel rounded-xl overflow-hidden p-2 space-y-1">
+                <button onclick="setTab('leaderboard')" id="nav-leaderboard"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-active">
+                    <span class="text-lg">🏆</span> Leaderboard
+                </button>
+                <button onclick="setTab('l1')" id="nav-l1"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">⚡</span> Level 1 (Entry)
+                </button>
+                <button onclick="setTab('l2')" id="nav-l2"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">🔰</span> Level 2 (Entry)
+                </button>
+                <button onclick="setTab('l3')" id="nav-l3"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">🗺️</span> Level 3 (Entry)
+                </button>
+                <button onclick="setTab('login')" id="nav-login"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">🔑</span> Login Entry
+                </button>
+                <button onclick="setTab('roster')" id="nav-roster"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">👥</span> Roster & Logs
+                </button>
+            </nav>
+
+            <!-- Actions -->
+            <div class="glass-panel p-4 rounded-xl space-y-2">
+                <h3 class="text-xs text-slate-500 font-bold uppercase mb-2">Data Controls</h3>
+                <button onclick="exportLogs('all')"
+                    class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs font-mono text-slate-300 transition-all">EXPORT
+                    CSV</button>
+                <button onclick="clearAllLogs()"
+                    class="w-full py-2 bg-red-900/20 hover:bg-red-900/40 border border-red-900/50 rounded text-xs font-mono text-red-400 transition-all">WIPE
+                    LOGS</button>
+            </div>
+        </aside>
+
+        <!-- MAIN PANEL -->
+        <div class="lg:col-span-9 flex flex-col h-full min-h-[600px]">
+            <div class="glass-panel flex-1 rounded-xl overflow-hidden flex flex-col relative">
+
+                <!-- View Header -->
+                <div class="px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                    <h2 id="viewTitle" class="text-sm font-bold text-white flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        LEADERBOARD
+                    </h2>
+                    <input type="text" id="searchInput" onkeyup="renderCurrentView()" placeholder="Search Crew..."
+                        class="bg-black/20 border border-slate-700 rounded-lg text-xs text-white px-3 py-1.5 focus:border-blue-500 outline-none w-48">
+                </div>
+
+                <!-- Input Area for Logic tabs -->
+                <div id="inputArea"
+                    class="hidden px-6 py-4 border-b border-slate-800 bg-slate-900/30 flex gap-2 items-center">
+                    <!-- Dynamic Inputs injected here -->
+                </div>
+
+                <!-- Scrollable View Area -->
+                <div id="viewContainer" class="flex-1 overflow-y-auto bg-slate-900/20 relative">
+                    <!-- Dynamic Content -->
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="px-4 py-2 bg-slate-950/80 border-t border-slate-800 text-[10px] text-slate-600 font-mono flex justify-between">
+                    <span>STATUS: MONITORING</span>
+                    <span id="lastUpdated">-</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- LOGIC -->
+    <script>
+        // --- CONSTANTS & STATE ---
+        const KEYS = {
+            LOGS: 'pirateAdminLogs',
+            L1: 'pirateLevel1Data',
+            MANUAL: 'pirateManualData'
+        };
+
+        let state = {
+            crews: [],
+            logs: [],
+            manual: {},   // { crewId: { login: bool, l2: {complete: bool, fails: int}, l3: int } }
+            l1Data: {},   // { crewId: timestamp }
+            leaderboard: [],
+            currentTab: 'leaderboard'
+        };
+
+        // --- INIT ---
+        window.onload = async () => {
+            await fetchCrews();
+            refreshData();
+            // Auto refresh every 5s
+            setInterval(refreshData, 5000);
+        };
+
+        function setTab(tab) {
+            state.currentTab = tab;
+
+            // Update Navigation UI
+            document.querySelectorAll('[id^="nav-"]').forEach(btn => {
+                const isActive = btn.id === `nav-${tab}`;
+                btn.className = `w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 ${isActive ? 'tab-active' : 'tab-inactive'}`;
+            });
+
+            // Update Header Title
+            const titles = {
+                'leaderboard': 'LEADERBOARD RANKINGS',
+                'l1': 'LEVEL 1: MANUAL ENTRY (10 PTS)',
+                'l2': 'LEVEL 2: EDIT STATUS (AUTO + MANUAL)',
+                'l3': 'LEVEL 3: EDIT POINTS (SCANS + BONUS)',
+                'login': 'LOGIN ENTRY MANAGER',
+                'roster': 'CREW ROSTER & LOGS'
+            };
+            document.getElementById('viewTitle').innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> ${titles[tab]}`;
+
+            // Show/Hide Input Area
+            const inputArea = document.getElementById('inputArea');
+            if (['login', 'l2', 'l3'].includes(tab)) {
+                inputArea.classList.remove('hidden');
+                renderInputArea(tab);
+            } else {
+                inputArea.classList.add('hidden');
+            }
+
+            renderCurrentView();
+        }
+
+        function renderInputArea(tab) {
+            const container = document.getElementById('inputArea');
+            container.innerHTML = '';
+
+            if (tab === 'login') {
+                container.innerHTML = `
+                    <input type="text" id="manualLoginId" placeholder="Enter Crew ID (e.g. CR001)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-64 focus:border-green-500 outline-none">
+                    <button onclick="addManualLogin()" class="bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">MARK ONLINE</button>
+                    <span class="text-xs text-slate-500 ml-2">Manually logs in a team bypassing digital check.</span>
+                `;
+            } else if (tab === 'l2') {
+                container.innerHTML = `
+                    <input type="text" id="manualL2Id" placeholder="Crew ID" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 focus:border-blue-500 outline-none">
+                    <select id="manualL2Status" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 outline-none">
+                        <option value="complete">Mark Complete</option>
+                        <option value="incomplete">Mark Incomplete</option>
+                    </select>
+                    <input type="number" id="manualL2Fails" placeholder="Fails (0)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-24 outline-none">
+                    <button onclick="addManualL2()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">UPDATE</button>
+                `;
+            } else if (tab === 'l3') {
+                container.innerHTML = `
+                    <input type="text" id="manualL3Id" placeholder="Crew ID" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 focus:border-purple-500 outline-none">
+                    <input type="number" id="manualL3Points" placeholder="Bonus Points (+/-)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 outline-none">
+                    <button onclick="addManualL3()" class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">ADD POINTS</button>
+                `;
+            }
+        }
+
+        async function fetchCrews() {
+            try {
+                const res = await fetch('crew.json');
+                if (res.ok) state.crews = await res.json();
+            } catch (e) { console.error("Crew fetch failed", e); }
+        }
+
+        function refreshData() {
+            // Load Local Data
+            state.logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
+            state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
+            state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
+
+            calculateScores();
+            updateStats();
+            renderCurrentView();
+
+            document.getElementById('lastUpdated').innerText = 'UPDATED: ' + new Date().toLocaleTimeString();
+        }
+
+        // --- CORE LOGIC ---
+        function calculateScores() {
+            state.leaderboard = state.crews.map(crew => {
+                const id = crew.crewid;
+                const mData = state.manual[id] || {};
+
+                // Login
+                const autoLogin = state.logs.some(l => l.crewId === id && l.type === 'LOGIN');
+                const isLoggedIn = autoLogin || !!mData.login;
+
+                // L1
+                const l1Ts = state.l1Data[id];
+                const l1Score = l1Ts ? 10 : 0;
+
+                // L2
+                const l2Logs = state.logs.filter(l => l.crewId === id && l.type === 'VERIFY');
+                const autoSuccess = l2Logs.some(l => l.action === 'SUCCESS');
+                const autoFails = l2Logs.filter(l => l.action === 'FAILURE').length;
+
+                let l2Success = autoSuccess;
+                if (mData.l2 && typeof mData.l2.complete === 'boolean') l2Success = mData.l2.complete;
+
+                let l2Fails = autoFails;
+                if (mData.l2 && typeof mData.l2.fails === 'number') l2Fails = mData.l2.fails;
+
+                let l2Score = 0;
+                if (l2Success) {
+                    l2Score = 10 - (l2Fails * 2);
+                    if (l2Score < 0) l2Score = 0;
+                }
+
+                // L3
+                const l3Logs = state.logs.filter(l => l.crewId === id && l.type === 'LOCATION');
+                const autoL3 = l3Logs.reduce((sum, l) => sum + (parseInt(l.points) || 0), 0);
+                const manualL3 = parseInt(mData.l3) || 0;
+                const l3Score = autoL3 + manualL3;
+
+                return {
+                    ...crew,
+                    isLoggedIn,
+                    l1Timestamp: l1Ts,
+                    l1Score,
+                    l2Success,
+                    l2Fails,
+                    l2Score,
+                    l3Score,
+                    autoL3,
+                    manualL3,
+                    totalScore: l1Score + l2Score + l3Score
+                };
+            }).sort((a, b) => b.totalScore - a.totalScore);
+        }
+
+        function updateStats() {
+            if (state.leaderboard.length > 0) {
+                document.getElementById('topCrew').innerText = state.leaderboard[0].crewname;
+                document.getElementById('topScore').innerText = state.leaderboard[0].totalScore + " PTS";
+            }
+            document.getElementById('activeTeams').innerText = state.leaderboard.filter(c => c.isLoggedIn).length;
+        }
+
+        // --- RENDERING ---
+        // --- RENDERING ---
+        function renderCurrentView() {
+            const container = document.getElementById('viewContainer');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const tab = state.currentTab;
+
+            // 1. Initial Data
+            let data = state.leaderboard;
+
+            // 2. Search Filter
+            if (search) {
+                data = data.filter(c =>
+                    c.crewname.toLowerCase().includes(search) ||
+                    c.crewid.toLowerCase().includes(search)
+                );
+            }
+
+            // 3. Tab-Specific Filters (Remove Predefined Rows)
+            if (tab === 'l1') {
+                // LEVEL 1: SHOW ALL (Predefined Rows)
+            }
+            else if (tab === 'l2') {
+                // Show if they have ANY activity (Auto success OR Manual entry)
+                data = data.filter(c => c.l2Success || state.manual[c.crewid]?.l2);
+            }
+            else if (tab === 'l3') {
+                // Show if they have ANY points (Auto points OR Manual bonus)
+                data = data.filter(c => c.l3Score > 0 || state.manual[c.crewid]?.l3);
+            }
+            else if (tab === 'login') {
+                // Show only if logged in
+                data = data.filter(c => c.isLoggedIn);
+            }
+
+            // Helpers
+            const header = (cols, ...titles) => `
+                <div class="sticky top-0 z-10 grid gap-4 items-center px-6 py-3 bg-slate-900/90 border-b border-slate-700 text-xs font-bold text-slate-500 uppercase tracking-widest font-mono" style="grid-template-columns: ${cols}">
+                    ${titles.map(t => `<div>${t}</div>`).join('')}
+                </div>
+            `;
+
+            const row = (cols, content) => `
+                <div class="grid gap-4 items-center px-6 py-4 border-b border-slate-800 hover:bg-white/5 transition-colors text-sm" style="grid-template-columns: ${cols}">
+                    ${content}
+                </div>
+            `;
+
+            // Empty State
+            if (data.length === 0 && tab !== 'leaderboard') {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-12 text-slate-600 opacity-50">
+                        <div class="text-4xl mb-4">🚫</div>
+                        <div class="font-mono text-xs">NO ACTIVE ENTRIES</div>
+                        <div class="text-[10px] mt-2">Use input above to add data.</div>
+                    </div>`;
+                return;
+            }
+
+            // RENDER LOGIC
+            let html = '';
+
+            if (tab === 'leaderboard') {
+                html = header('0.5fr 2fr 1fr 1fr 1fr 1fr', '#', 'CREW', 'L1', 'L2', 'L3', 'TOTAL');
+                html += '<div class="divide-y divide-slate-800">';
+                html += data.map((d, i) => row('0.5fr 2fr 1fr 1fr 1fr 1fr', `
+                    <div class="font-mono text-slate-500">#${i + 1}</div>
+                    <div>
+                        <div class="font-bold text-white">${d.crewname}</div>
+                        <div class="text-[10px] text-blue-400 font-mono">${d.crewid}</div>
+                    </div>
+                    <div class="font-mono ${d.l1Score > 0 ? 'text-green-400' : 'text-slate-600'}">${d.l1Score > 0 ? '+10' : '-'}</div>
+                    <div>
+                        <div class="font-mono ${d.l2Score > 0 ? 'text-green-400' : 'text-slate-600'}">${d.l2Score}</div>
+                        ${d.l2Fails > 0 ? `<div class="text-[9px] text-red-400">-${d.l2Fails * 2} pen</div>` : ''}
+                    </div>
+                    <div class="font-mono text-blue-400">${d.l3Score}</div>
+                    <div class="font-mono font-bold text-amber-400 text-lg">${d.totalScore}</div>
+                `)).join('');
+                html += '</div>';
+
+            } else if (state.currentTab === 'l1') {
+                html = header('1fr 2fr 2fr 1fr', 'ID', 'CREW', 'COMPLETION TIME', 'ACTION');
+                html += data.map(d => row('1fr 2fr 2fr 1fr', `
+                    <div class="font-mono text-blue-400">${d.crewid}</div>
+                    <div class="text-white">${d.crewname}</div>
+                    <input type="datetime-local" id="ts_${d.crewid}" value="${d.l1Timestamp || ''}" class="bg-slate-900 border border-slate-700 rounded text-xs px-2 py-1 text-white w-full">
+                    <button onclick="saveL1('${d.crewid}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded font-bold transition-all">SAVE</button>
+                `)).join('');
+
+            } else if (state.currentTab === 'l2') {
+                html = header('1fr 2fr 1fr 1fr 1fr', 'CREW', 'STATUS', 'FAILS', 'SCORE', 'REMOVE');
+                html += data.map(d => {
+                    const hasManual = state.manual[d.crewid]?.l2;
+                    return row('1fr 2fr 1fr 1fr 1fr', `
+                    <div>
+                        <div class="text-white font-bold">${d.crewid}</div>
+                        <div class="text-[10px] text-slate-500">${d.crewname}</div>
+                    </div>
+                    <div>
+                        <span class="text-xs ${d.l2Success ? 'text-green-400' : 'text-slate-500'}">${d.l2Success ? 'COMPLETED' : 'PENDING'}</span>
+                        ${hasManual ? '<span class="text-[9px] text-blue-400 ml-1">(MANUAL)</span>' : ''}
+                    </div>
+                    <div class="font-mono text-slate-300">
+                        ${d.l2Fails}
+                    </div>
+                    <div class="font-mono text-amber-400">${d.l2Score}</div>
+                    ${hasManual ? `<button onclick="clearL2('${d.crewid}')" class="text-red-500 hover:text-red-400 text-xs underline">Reset</button>` : '<span>-</span>'}
+                `)
+                }).join('');
+
+            } else if (state.currentTab === 'l3') {
+                html = header('1fr 1fr 1fr 1fr 1fr', 'CREW', 'AUTO SCAN', 'MANUAL BONUS', 'TOTAL', 'REMOVE');
+                html += data.map(d => {
+                    const hasManual = state.manual[d.crewid]?.l3 !== undefined;
+                    return row('1fr 1fr 1fr 1fr 1fr', `
+                    <div>
+                        <div class="text-white font-bold">${d.crewid}</div>
+                        <div class="text-[10px] text-slate-500">${d.crewname}</div>
+                    </div>
+                    <div class="font-mono text-slate-400">${d.autoL3}</div>
+                    <div class="font-mono ${d.manualL3 > 0 ? 'text-green-400' : 'text-slate-500'}">${d.manualL3 > 0 ? '+' : ''}${d.manualL3}</div>
+                    <div class="font-mono text-green-400 font-bold">${d.l3Score}</div>
+                    ${hasManual ? `<button onclick="clearL3('${d.crewid}')" class="text-red-500 hover:text-red-400 text-xs underline">Reset</button>` : '<span>-</span>'}
+                `)
+                }).join('');
+
+            } else if (state.currentTab === 'login') {
+                html = header('1fr 2fr 1fr 1fr', 'CREW', 'CURRENT STATUS', 'SOURCE', 'ACTION');
+                html += data.map(d => {
+                    const status = d.isLoggedIn ? '<span class="text-green-400 font-bold">ONLINE</span>' : '<span class="text-slate-600">OFFLINE</span>';
+                    const source = state.manual[d.crewid]?.login ? 'MANUAL OVERRIDE' : (d.isLoggedIn ? 'SYSTEM LOG' : '-');
+                    const hasManual = state.manual[d.crewid]?.login;
+
+                    return row('1fr 2fr 1fr 1fr', `
+                    <div>
+                        <div class="text-white font-bold">${d.crewid}</div>
+                         <div class="text-[10px] text-slate-500">${d.crewname}</div>
+                    </div>
+                    <div>${status}</div>
+                    <div class="text-[10px] font-mono text-slate-500">${source}</div>
+                    ${hasManual ? `<button onclick="toggleLogin('${d.crewid}', false)" class="text-red-400 hover:text-red-300 text-xs font-bold underline">REMOVE OVERRIDE</button>` : '-'}
+                `)
+                }).join('');
+
+            } else if (state.currentTab === 'roster') {
+                html = `<div class="p-4 space-y-6">`;
+
+                // 1. FULL CREW ROSTER
+                html += `
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 px-2">FULL CREW ROSTER (${state.crews.length})</h3>
+                        <div class="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+                            <div class="grid grid-cols-4 gap-4 px-4 py-2 bg-slate-800 text-xs font-bold text-slate-400 uppercase font-mono">
+                                <div>ID</div>
+                                <div>Crew Name</div>
+                                <div>Captain</div>
+                                <div>Password</div>
+                            </div>
+                            <div class="max-h-64 overflow-y-auto divide-y divide-slate-800">
+                                ${state.crews.map(c => `
+                                    <div class="grid grid-cols-4 gap-4 px-4 py-2 text-xs hover:bg-slate-800/50">
+                                        <div class="font-mono text-blue-400">${c.crewid}</div>
+                                        <div class="text-white">${c.crewname}</div>
+                                        <div class="text-slate-400">${c.captain}</div>
+                                        <div class="font-mono text-red-400">${c.password}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 2. SYSTEM LOGS
+                html += `<div><h3 class="text-xs font-bold text-slate-500 uppercase mb-3 px-2">RECENT SYSTEM LOGS</h3>`;
+                html += `<div class="font-mono text-[10px] space-y-1 bg-slate-900/50 p-2 rounded border border-slate-800">`;
+                const logs = [...state.logs].reverse().slice(0, 100);
+
+                if (logs.length === 0) html += `<div class="text-slate-600 italic px-2">No logs found.</div>`;
+
+                logs.forEach(l => {
+                    let color = 'text-slate-400';
+                    if (l.type === 'ERROR') color = 'text-red-400';
+                    if (l.type === 'LOGIN') color = 'text-green-400';
+                    if (l.action === 'SUCCESS') color = 'text-amber-400';
+                    const details = JSON.stringify(l).replace(/"/g, '').substring(0, 100);
+                    html += `
+                        <div class="grid grid-cols-12 gap-2 border-b border-slate-800/50 py-1 hover:bg-white/5 px-2">
+                            <div class="col-span-2 text-slate-600">${new Date(l.timestamp).toLocaleTimeString()}</div>
+                            <div class="col-span-1 text-blue-400 font-bold">${l.crewId || '-'}</div>
+                            <div class="col-span-2 ${color}">${l.type}</div>
+                            <div class="col-span-7 text-slate-500 truncate">${details}</div>
+                        </div>
+                    `;
+                });
+                html += `</div></div></div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // --- INPUT ACTIONS ---
+        function addManualLogin() {
+            const id = document.getElementById('manualLoginId').value.toUpperCase();
+            if (!id) return alert("Enter Crew ID");
+            if (!state.crews.find(c => c.crewid === id)) return alert("Invalid Crew ID");
+
+            if (!state.manual[id]) state.manual[id] = {};
+            state.manual[id].login = true;
+            saveManual();
+            document.getElementById('manualLoginId').value = '';
+        }
+
+        function addManualL2() {
+            const id = document.getElementById('manualL2Id').value.toUpperCase();
+            const status = document.getElementById('manualL2Status').value;
+            const fails = document.getElementById('manualL2Fails').value;
+
+            if (!id) return alert("Enter Crew ID");
+            if (!state.crews.find(c => c.crewid === id)) return alert("Invalid Crew ID");
+
+            if (!state.manual[id]) state.manual[id] = {};
+            state.manual[id].l2 = {
+                complete: status === 'complete',
+                fails: fails === '' ? 0 : parseInt(fails)
+            };
+            saveManual();
+
+            // Clear inputs
+            document.getElementById('manualL2Id').value = '';
+            document.getElementById('manualL2Fails').value = '';
+        }
+
+        function addManualL3() {
+            const id = document.getElementById('manualL3Id').value.toUpperCase();
+            const points = document.getElementById('manualL3Points').value;
+
+            if (!id) return alert("Enter Crew ID");
+            if (!state.crews.find(c => c.crewid === id)) return alert("Invalid Crew ID");
+            if (!points) return alert("Enter Points");
+
+            if (!state.manual[id]) state.manual[id] = {};
+            state.manual[id].l3 = parseInt(points);
+            saveManual();
+
+            document.getElementById('manualL3Id').value = '';
+            document.getElementById('manualL3Points').value = '';
+        }
+
+        // --- ROW ACTIONS ---
+        function saveManual() { localStorage.setItem(KEYS.MANUAL, JSON.stringify(state.manual)); refreshData(); }
+        function saveL1Data() { localStorage.setItem(KEYS.L1, JSON.stringify(state.l1Data)); refreshData(); }
+
+        window.saveL1 = (id) => {
+            const val = document.getElementById(`ts_${id}`).value;
+            if (val) state.l1Data[id] = val; else delete state.l1Data[id];
+            saveL1Data();
+            alert("Level 1 Updated");
+        };
+
+        // Remove Overrides
+        window.toggleLogin = (id, status) => {
+            if (!state.manual[id]) state.manual[id] = {};
+            state.manual[id].login = status;
+            if (!status) delete state.manual[id].login; // actually remove key if false
+            saveManual();
+        };
+
+        window.clearL2 = (id) => {
+            if (confirm('Remove manual override for ' + id + '?')) {
+                if (state.manual[id]) delete state.manual[id].l2;
+                saveManual();
+            }
+        };
+
+        window.clearL3 = (id) => {
+            if (confirm('Remove manual bonus for ' + id + '?')) {
+                if (state.manual[id]) delete state.manual[id].l3;
+                saveManual();
+            }
+        }
+
+        window.exportLogs = (type) => {
+            const data = state.logs;
+            if (!data.length) return alert("No logs");
+            const headers = Object.keys(data[0]);
+            const rows = [headers.join(',')];
+            data.forEach(r => rows.push(headers.map(h => `"${r[h] || ''}"`).join(',')));
+
+            const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pirates_log_${Date.now()}.csv`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        };
+
+        window.clearAllLogs = () => {
+            if (confirm("WIPE ALL LOGS?")) {
+                localStorage.removeItem(KEYS.LOGS);
+                refreshData();
+            }
+        };
+
+    </script>
+</body>
+
+</html>

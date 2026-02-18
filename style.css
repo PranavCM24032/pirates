@@ -251,10 +251,10 @@ body {
     margin: 0;
     padding: 0;
     width: 100vw;
-    min-height: 100vh;
-    /* Changed from fixed height to min-height for robustness */
-    overflow-x: hidden;
-    /* Prevent horizontal scroll */
+    height: 100dvh;
+    /* Use dynamic viewport height */
+    overflow: hidden;
+    /* Fixed screen - No scroll */
     background: #000;
     display: flex;
     align-items: center;
@@ -455,6 +455,7 @@ body,
     position: relative;
     image-rendering: pixelated;
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    will-change: transform;
 }
 
 .minecraft-panel:hover {
@@ -469,6 +470,7 @@ body,
     position: relative;
     image-rendering: pixelated;
     transition: all 0.1s;
+    will-change: transform;
     text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
     cursor: pointer;
     background: #AFAFAF;
@@ -760,12 +762,12 @@ body,
 /* Tablet & Small Desktop */
 @media (max-width: 1024px) {
     .grand-title {
-        font-size: clamp(1.5rem, 7vw, 3rem);
+        font-size: clamp(1.5rem, 6vw, 3rem);
     }
 
     .minecraft-panel {
         max-width: 90% !important;
-        padding: 1.8rem !important;
+        padding: 1.5rem !important;
     }
 }
 
@@ -776,14 +778,14 @@ body,
     }
 
     .grand-title {
-        font-size: clamp(1.2rem, 8vw, 2.5rem);
+        font-size: clamp(1.2rem, 7vw, 2.5rem);
         text-shadow: 2px 2px 0px var(--mc-black);
         letter-spacing: 1px;
     }
 
     .minecraft-panel {
-        width: 95% !important;
-        padding: 1.5rem !important;
+        width: 92% !important;
+        padding: 1.2rem !important;
         border-width: 4px !important;
         margin: 10px auto !important;
     }
@@ -794,8 +796,9 @@ body,
     }
 
     .viewport-container {
-        padding: 15px;
+        padding: 10px;
         max-width: 100%;
+        width: 100%;
     }
 
     /* Optimize animations for mobile */

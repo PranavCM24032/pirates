@@ -24,18 +24,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            height: 100dvh;
+            /* Locked screen */
             margin: 0;
             overflow: hidden;
+            /* No scroll */
             position: relative;
             image-rendering: pixelated;
-            /* Keeps pixels sharp */
-            overflow-y: auto;
-            /* Allow vertical scrolling on small screens */
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px 0;
-            /* Add padding for scroll breathing room */
         }
 
         /* The Map Frame (Now Transparent to show Torn Edges) */
@@ -333,6 +328,29 @@
             font-size: 1.2rem;
             color: #3d2b1f;
         }
+
+        @media (max-width: 480px) {
+            .mc-map-container {
+                width: 96vw;
+            }
+
+            .mc-map-paper {
+                padding: 30px 15px;
+                min-height: 400px;
+                background-size: 100px 100px, 30px 30px, 30px 30px, auto, 64px 64px !important;
+            }
+
+            .title-text {
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+            }
+
+            .mc-button {
+                width: 95%;
+                font-size: 1rem;
+                padding: 6px 10px;
+            }
+        }
     </style>
 </head>
 
@@ -525,6 +543,8 @@
             gameState.scanCount = (gameState.scanCount || 0) + 1;
             gameState.targetNode = nextId;
             saveGame();
+
+            if (window.logGameEvent) logGameEvent('LOCATION', { node: nextId, points: points, scanCount: gameState.scanCount });
 
             // Node E handling is now integrated into the Reveal flow
             // Removed immediate redirect to allow "Landing" effect at the Goal Node

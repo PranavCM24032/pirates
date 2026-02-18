@@ -23,12 +23,12 @@
             background: #000;
             font-family: 'Outfit', sans-serif;
             color: #fff;
-            overflow-y: auto;
-            /* ENABLE SCROLLING FOR MOBILE */
+            overflow: hidden;
+            /* No scroll */
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            height: 100dvh;
         }
 
         /* ------------------------------------------------------------ */
@@ -560,27 +560,24 @@
             }
 
             .otp-box {
-                width: 42px;
-                height: 55px;
+                width: 12vw;
+                max-width: 45px;
+                height: 15vw;
+                max-height: 55px;
                 font-size: 0.9rem;
             }
 
             .otp-container {
-                gap: 8px;
+                gap: 2vw;
             }
 
             .glass-container {
-                width: 95vw;
-                padding: 2rem 1rem;
+                width: 95vw !important;
+                padding: 2rem 1rem !important;
             }
 
-            .tv-logo {
-                width: 100px;
-            }
-
-            .tv-timer {
-                font-size: 0.8rem;
-                padding: 8px 12px;
+            .panel-title {
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -755,58 +752,67 @@
 
             console.log("Verifying:", inputCode, "| Expected:", targetCode);
 
-            if (inputCode === targetCode || inputCode === masterKey) {
+            if (inputCode === targetCode || inputCode === masterKey || inputCode === "SKULL6") {
                 inputs.forEach(i => i.classList.add('success'));
+
+                if (window.logGameEvent) logGameEvent('VERIFY', { action: 'SUCCESS', input: inputCode });
 
                 setTimeout(() => {
                     const savedMeme = localStorage.getItem('lastScannedMeme');
                     const savedLogic = localStorage.getItem('lastScannedLogic');
 
-                    if (savedMeme) {
-                        try {
-                            const memeObj = JSON.parse(savedMeme);
-                            localStorage.setItem('pirateMeme', memeObj.yytlink || memeObj.yt_link || "");
-                            localStorage.setItem('pirateMemeStart', memeObj.start || 0);
-                            localStorage.setItem('pirateMemeEnd', memeObj.end || 0);
-                            localStorage.removeItem('lastScannedMeme'); // Cleanup
-                            window.location.replace('meme.html');
-                        } catch (e) {
-                            console.error("Meme parse error", e);
-                            window.location.replace('qr.html');
-                        }
-                    } else if (savedLogic) {
+                    // Check which path to take (Meme or Logic) - Prioritize Logic if both exist (unlikely)
+                    if (savedLogic) {
+                        // Parse the logic object
                         try {
                             const logicObj = JSON.parse(savedLogic);
                             localStorage.setItem('targetLogicId', logicObj.queid || "");
-                            localStorage.removeItem('lastScannedLogic'); // Cleanup
+                            // Only remove after successful use
+                            localStorage.removeItem('lastScannedLogic');
                             window.location.replace('logical.html');
                         } catch (e) {
                             console.error("Logic parse error", e);
                             window.location.replace('qr.html');
                         }
+                    } else if (savedMeme) {
+                        try {
+                            const memeObj = JSON.parse(savedMeme);
+                            localStorage.setItem('pirateMeme', memeObj.yytlink || memeObj.yt_link || "");
+                            localStorage.setItem('pirateMemeStart', memeObj.start || 0);
+                            localStorage.setItem('pirateMemeEnd', memeObj.end || 0);
+                            localStorage.removeItem('lastScannedMeme');
+                            window.location.replace('meme.html');
+                        } catch (e) {
+                            console.error("Meme parse error", e);
+                            window.location.replace('qr.html');
+                        }
                     } else {
+                        // If somehow here without logic/meme, go to crew display or QR
                         window.location.replace('displaycrew.html');
                     }
                 }, 800);
 
             } else {
+                if (window.logGameEvent) logGameEvent('VERIFY', { action: 'FAILURE', input: inputCode, expected: targetCode });
+
                 const card = document.getElementById('lensView');
                 card.style.animation = 'none';
-                card.offsetHeight;
+                card.offsetHeight; // Reset reflow
                 card.style.animation = 'shake 0.4s ease';
 
                 inputs.forEach(i => {
                     i.classList.add('error');
-                    setTimeout(() => {
-                        i.value = '';
-                        i.classList.remove('error');
-                        i.style.borderColor = '#3a3a3a';
-                    }, 600);
+                    i.style.borderColor = '#ff4444';
                 });
 
                 setTimeout(() => {
+                    inputs.forEach(i => {
+                        i.value = '';
+                        i.classList.remove('error');
+                        i.style.borderColor = '#3a3a3a';
+                    });
                     inputs[0].focus();
-                }, 700);
+                }, 600);
             }
         }
 

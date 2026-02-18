@@ -18,7 +18,7 @@
 
         body {
             width: 100%;
-            height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             font-family: 'Press Start 2P', monospace;
             background: #000;
@@ -186,18 +186,28 @@
             height: 100%;
         }
 
-        @media (max-height: 600px) {
+        @media (max-width: 480px) {
+            .poster-screen-wrapper {
+                padding: 10px;
+            }
+
             .wanted-poster {
-                max-width: 260px;
+                max-width: 85vw;
                 padding: 15px;
             }
 
             .wanted-title {
                 font-size: 1rem;
+                padding-bottom: 5px;
+                border: 2px solid #550000;
             }
 
             .bounty-image {
                 margin: 10px 0;
+            }
+
+            .captain-name {
+                font-size: 0.6rem;
             }
         }
 

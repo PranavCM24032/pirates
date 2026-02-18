@@ -26,6 +26,27 @@ function saveGame() {
     localStorage.setItem('pirateState', JSON.stringify(gameState));
 }
 
+// Global Logging System (For Admin Panel)
+window.logGameEvent = function (type, data = {}) {
+    try {
+        const logs = JSON.parse(localStorage.getItem('pirateAdminLogs') || '[]');
+        const event = {
+            timestamp: Date.now(),
+            type: type.toUpperCase(),
+            crewId: gameState.teamData ? (gameState.teamData.crewid || gameState.teamData.id) : 'UNKNOWN',
+            level: gameState.currentLevel || 1,
+            ...data
+        };
+        logs.push(event);
+        // Limit log size to prevent quota exceeded errors (keep last 500)
+        if (logs.length > 500) logs.shift();
+        localStorage.setItem('pirateAdminLogs', JSON.stringify(logs));
+        console.log(`[LOG] ${type}:`, event);
+    } catch (e) {
+        console.warn("Logging failed:", e);
+    }
+};
+
 // Workflow / Progression System
 function navigateTo(url) {
     if (!url || typeof url !== 'string') return;
@@ -98,7 +119,14 @@ document.addEventListener('click', (e) => {
  * @param {string} colorBorder - Darkest border/shadow color (e.g. #5A2D0C)
  * @returns {object} { backgroundImage, borderImage } CSS values
  */
+const blockStyleCache = {};
+
 function createMinecraftBlockStyle(colorMain, colorDark, colorBorder) {
+    const cacheKey = `${colorMain}-${colorDark}-${colorBorder}`;
+    if (blockStyleCache[cacheKey]) {
+        return blockStyleCache[cacheKey];
+    }
+
     const cMain = encodeURIComponent(colorMain);
     const cDark = encodeURIComponent(colorDark);
     const cBorder = encodeURIComponent(colorBorder);
@@ -109,10 +137,13 @@ function createMinecraftBlockStyle(colorMain, colorDark, colorBorder) {
     // 2. Pixel Border (16x16 with 2px simulated width)
     const borderSvg = `data:image/svg+xml,<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" fill="${cBorder}"/><rect x="2" y="2" width="12" height="12" fill="${cMain}"/></svg>`;
 
-    return {
+    const style = {
         backgroundImage: `url('${bgSvg}')`,
         borderImage: `url('${borderSvg}') 6 stretch`
     };
+
+    blockStyleCache[cacheKey] = style;
+    return style;
 }
 
 function applyTheme() {

@@ -31,12 +31,13 @@
             background: #000;
             font-family: 'Outfit', sans-serif;
             color: #fff;
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow: hidden;
+            /* Fixed screen, no scroll */
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            height: 100dvh;
+            /* Use dvh for mobile */
             width: 100vw;
             padding: 20px;
         }
@@ -138,6 +139,8 @@
             justify-content: center;
             width: 100%;
             z-index: 10;
+            overflow-y: auto;
+            /* Enable internal scroll if content overflows */
         }
 
         .glass-card {
