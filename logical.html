@@ -737,8 +737,11 @@
             if (window.initGame) initGame();
             const targetId = localStorage.getItem('targetLogicId');
 
-            fetch('logical.json')
-                .then(res => res.json())
+            const loader = window.fetchJSONCached
+                ? window.fetchJSONCached('logical.json', { ttlMs: 10 * 60 * 1000 })
+                : fetch('logical.json').then(res => res.json());
+
+            loader
                 .then(data => {
                     if (targetId) {
                         currentPuzzle = data.find(item => item.queid.toUpperCase() === targetId.toUpperCase());

@@ -134,16 +134,25 @@
         document.addEventListener('DOMContentLoaded', () => {
             const loadingBar = document.getElementById('loadingBar');
             const loadingPercent = document.getElementById('loadingPercent');
-            const urlParams = new URLSearchParams(window.location.search);
+            const preloadFiles = ['crew.json', 'meme.json', 'logical.json', 'graph.json'];
 
             if (!loadingBar || !loadingPercent) {
                 console.error('Loading elements not found');
                 return;
             }
 
+            // Warm up core JSON data while splash is visible.
+            setTimeout(() => {
+                if (window.fetchJSONCached) {
+                    Promise.allSettled(preloadFiles.map(file => window.fetchJSONCached(file, { ttlMs: 10 * 60 * 1000 })));
+                } else {
+                    Promise.allSettled(preloadFiles.map(file => fetch(file, { cache: 'force-cache' })));
+                }
+            }, 0);
+
             let progress = 0;
             const interval = setInterval(() => {
-                progress += Math.random() * 25; // Smooth loading
+                progress += Math.random() * 40; // Faster loading
                 if (progress >= 100) {
                     progress = 100;
                     clearInterval(interval);
@@ -154,7 +163,7 @@
 
                     setTimeout(() => {
                         window.location.replace('displaycrew.html');
-                    }, 1000);
+                    }, 120);
                 } else {
                     const newProgress = Math.floor(progress);
                     const prevProgress = parseInt(loadingPercent.textContent) || 0;
@@ -166,7 +175,7 @@
                         if (window.playSound) window.playSound('click', { intensity: 0.2 });
                     }
                 }
-            }, 80);
+            }, 50);
 
             // Cleanup on unload
             window.addEventListener('beforeunload', () => {

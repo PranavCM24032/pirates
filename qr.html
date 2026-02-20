@@ -828,29 +828,23 @@
         // Load verification data with robustness
         async function loadData() {
             try {
+                const loader = window.fetchJSONCached
+                    ? (url) => window.fetchJSONCached(url, { ttlMs: 10 * 60 * 1000 })
+                    : async (url) => {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        return res.json();
+                    };
+
                 const results = await Promise.allSettled([
-                    fetch('meme.json'),
-                    fetch('logical.json'),
-                    fetch('graph.json')
+                    loader('meme.json'),
+                    loader('logical.json'),
+                    loader('graph.json')
                 ]);
 
-                // Handle Meme Data
-                if (results[0].status === 'fulfilled' && results[0].value.ok) {
-                    try { memeData = await results[0].value.json(); }
-                    catch (e) { console.error("Failed to parse meme.json", e); }
-                }
-
-                // Handle Logical Data
-                if (results[1].status === 'fulfilled' && results[1].value.ok) {
-                    try { logicalData = await results[1].value.json(); }
-                    catch (e) { console.error("Failed to parse logical.json", e); }
-                }
-
-                // Handle Graph Data
-                if (results[2].status === 'fulfilled' && results[2].value.ok) {
-                    try { graphData = await results[2].value.json(); }
-                    catch (e) { console.error("Failed to parse graph.json", e); }
-                }
+                if (results[0].status === 'fulfilled') memeData = results[0].value || [];
+                if (results[1].status === 'fulfilled') logicalData = results[1].value || [];
+                if (results[2].status === 'fulfilled') graphData = results[2].value || null;
 
                 console.log("Data Loaded:", {
                     memes: memeData ? memeData.length : 0,

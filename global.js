@@ -41,12 +41,75 @@ window.PiratesUtils = {
             clearTimeout(timeout);
             timeout = setTimeout(() => fn.apply(this, args), delay);
         };
+    },
+
+    /**
+     * Lightweight async defer that avoids blocking first paint.
+     */
+    defer: (cb, timeout = 1) => {
+        if (typeof window.requestIdleCallback === 'function') {
+            return window.requestIdleCallback(cb, { timeout });
+        }
+        return setTimeout(cb, timeout);
     }
 };
 
 // Aliases for backward compatibility
 window.escapeHTML = PiratesUtils.escapeHTML;
 window.safeJSONParse = PiratesUtils.safeJSONParse;
+
+const DATA_CACHE_PREFIX = 'pirate_json_cache_v1:';
+const inMemoryDataCache = new Map();
+
+function buildCacheKey(url) {
+    return `${DATA_CACHE_PREFIX}${url}`;
+}
+
+function getCachedRecord(url) {
+    const key = buildCacheKey(url);
+    const mem = inMemoryDataCache.get(key);
+    if (mem && mem.data !== undefined) return mem;
+
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = window.safeJSONParse(raw, null);
+    if (!parsed || typeof parsed !== 'object') return null;
+    inMemoryDataCache.set(key, parsed);
+    return parsed;
+}
+
+function setCachedRecord(url, data) {
+    const record = { ts: Date.now(), data };
+    const key = buildCacheKey(url);
+    inMemoryDataCache.set(key, record);
+    try {
+        localStorage.setItem(key, JSON.stringify(record));
+    } catch (e) {
+        // Ignore storage quota errors and continue with memory cache.
+    }
+}
+
+window.fetchJSONCached = async function (url, opts = {}) {
+    const ttlMs = Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : 5 * 60 * 1000;
+    const forceRefresh = !!opts.forceRefresh;
+    const cached = getCachedRecord(url);
+    const now = Date.now();
+
+    if (!forceRefresh && cached && (now - cached.ts) <= ttlMs) {
+        return cached.data;
+    }
+
+    try {
+        const res = await fetch(url, { cache: 'force-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setCachedRecord(url, data);
+        return data;
+    } catch (err) {
+        if (cached && cached.data !== undefined) return cached.data;
+        throw err;
+    }
+};
 
 // GLOBAL GAME STATE
 const gameState = {
@@ -280,10 +343,10 @@ function navigateTo(url) {
             window.location.href = url;
         });
     } else {
-        document.body.style.transition = 'opacity 0.3s ease, filter 0.3s ease';
+        document.body.style.transition = 'opacity 0.12s ease, filter 0.12s ease';
         document.body.style.opacity = '0';
-        document.body.style.filter = 'blur(10px)';
-        setTimeout(() => window.location.href = url, 300);
+        document.body.style.filter = 'blur(3px)';
+        setTimeout(() => window.location.href = url, 120);
     }
 }
 
@@ -481,8 +544,8 @@ function initClientTimer() {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
-    applyTheme();
     injectGlobalHUD();
+    PiratesUtils.defer(() => applyTheme(), 60);
 
     const currentPage = getCurrentPage();
     if (gameState.teamData && currentPage !== 'admin.html') {
@@ -494,11 +557,13 @@ document.addEventListener('DOMContentLoaded', () => {
         initClientTimer();
     }
 
-    // Sound Loader
-    const sc = document.createElement('script');
-    sc.src = 'sound.js';
-    sc.async = true;
-    document.head.appendChild(sc);
+    // Sound Loader (deferred to reduce first paint blocking on low-end devices)
+    setTimeout(() => {
+        const sc = document.createElement('script');
+        sc.src = 'sound.js';
+        sc.async = true;
+        document.head.appendChild(sc);
+    }, 180);
 
     // Parallax
     if (window.matchMedia("(pointer: fine)").matches) {

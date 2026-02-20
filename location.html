@@ -611,8 +611,11 @@
                 gameState.journey = [];
                 if (window.saveGame) saveGame();
             }
-            fetch('graph.json')
-                .then(res => res.json())
+            const loader = window.fetchJSONCached
+                ? window.fetchJSONCached('graph.json', { ttlMs: 10 * 60 * 1000 })
+                : fetch('graph.json').then(res => res.json());
+
+            loader
                 .then(data => {
                     graph = data;
                     updateLocation();

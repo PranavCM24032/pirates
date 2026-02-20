@@ -252,7 +252,7 @@
                 }
 
                 tableBody.innerHTML = '';
-                crewsToRender.forEach((crew, index) => {
+                crewsToRender.forEach((crew) => {
                     const members = crew.members?.length ? crew.members.join(', ') : 'No members listed';
                     const row = document.createElement('tr');
                     row.className = 'crew-row';
@@ -261,15 +261,18 @@
                         <td><span class="team-name-cell">${crew.crewname}</span></td>
                         <td>${members}</td>
                     `;
+                    row.classList.add('visible');
                     tableBody.appendChild(row);
-
-                    setTimeout(() => row.classList.add('visible'), index * 15); // Fast cascade
                 });
             }
 
             try {
-                const res = await fetch('crew.json');
-                allCrews = res.ok ? await res.json() : [];
+                if (window.fetchJSONCached) {
+                    allCrews = await window.fetchJSONCached('crew.json', { ttlMs: 10 * 60 * 1000 });
+                } else {
+                    const res = await fetch('crew.json');
+                    allCrews = res.ok ? await res.json() : [];
+                }
             } catch {
                 allCrews = [
                     { crewname: "The Black Pearl", members: ["First Mate Rohan", "Navigator Arjun"] },

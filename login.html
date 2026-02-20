@@ -588,8 +588,12 @@
             // Load Data efficiently
             let crews = [];
             try {
-                const res = await fetch('crew.json');
-                if (res.ok) crews = await res.json();
+                if (window.fetchJSONCached) {
+                    crews = await window.fetchJSONCached('crew.json', { ttlMs: 10 * 60 * 1000 });
+                } else {
+                    const res = await fetch('crew.json');
+                    if (res.ok) crews = await res.json();
+                }
             } catch (e) {
                 console.warn("Crew data fetch failed");
             }
@@ -627,7 +631,7 @@
                     if (window.playSound) window.playSound('level_up');
                     if (window.logGameEvent) logGameEvent('LOGIN', { details: 'Credentials Verified', crewName: found.crewname });
 
-                    setTimeout(() => navigateNext(), 300);
+                    setTimeout(() => navigateNext(), 80);
                 } else {
                     if (window.playSound) window.playSound('error');
                     if (window.logGameEvent) logGameEvent('LOGIN_FAIL', { details: 'Invalid Credentials', attemptedName: name });
