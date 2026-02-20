@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Treasure Scanner</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function () {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,10 +45,10 @@
             font-family: 'Press Start 2P', cursive;
             background: #000;
             color: #FFAA00;
-            height: 100dvh;
+            height: 100vh;
             width: 100vw;
-            overflow: hidden;
-            /* No scroll */
+            overflow-y: auto;
+            /* ENABLE SCROLLING FOR MOBILE */
             position: relative;
         }
 
@@ -42,7 +65,7 @@
         .background-layer {
             position: fixed;
             inset: 0;
-            background: url('images/qr1.png') center/cover;
+            background: url('images/qr.jpeg') center/cover;
             z-index: -3;
         }
 
@@ -573,7 +596,6 @@
         }
 
         /* Responsive */
-        /* Responsive */
         @media (max-width: 600px) {
             .main-title {
                 font-size: 1.8rem;
@@ -581,15 +603,6 @@
 
             .wooden-panel {
                 padding: 20px;
-                width: 90vw;
-            }
-
-            .close-btn {
-                right: -10px;
-                top: -10px;
-                width: 2.5rem;
-                height: 2.5rem;
-                font-size: 1.5rem;
             }
 
             .scan-button-container {
@@ -603,31 +616,19 @@
             }
         }
 
-        @media (max-width: 380px) {
+        @media (max-width: 350px) {
             .main-title {
                 font-size: 1.4rem;
             }
 
-            .wooden-panel {
-                width: 95vw;
-                padding: 15px;
-            }
-
-            /* Move close button inside to prevent cutoff */
-            .close-btn {
-                position: absolute;
-                top: 5px;
-                right: 5px;
-                width: 2rem;
-                height: 2rem;
-                font-size: 1.2rem;
-                background: rgba(139, 69, 19, 0.9);
-                border: 2px solid #FFAA00;
-                z-index: 20;
-            }
-
             .subtitle {
                 font-size: 0.6rem;
+            }
+
+            .wooden-panel {
+                width: 100%;
+                border-width: 4px;
+                padding: 10px;
             }
 
             .scan-button-container {
@@ -1251,18 +1252,9 @@
                 triggerFeedback();
 
                 // 3. DETECT INTENT: Check data sources
-                const normalized = normalizeScannedId(decodedText);
-
-                if (window.logGameEvent) {
-                    logGameEvent('SCAN_CODE', {
-                        input: decodedText,
-                        normalized: normalized
-                    });
-                }
-
-                const isMapLocation = graphData?.location_names?.[normalized];
-                const isMemeItem = (memeData || []).find(m => m.memid && m.memid.toUpperCase() === normalized);
-                const isLogicItem = (logicalData || []).find(l => l.queid && l.queid.toUpperCase() === normalized);
+                const isMapLocation = graphData?.location_names?.[scannedId];
+                const isMemeItem = (memeData || []).find(m => m.memid && m.memid.toUpperCase() === scannedId);
+                const isLogicItem = (logicalData || []).find(l => l.queid && l.queid.toUpperCase() === scannedId);
 
                 if (isMapLocation) {
                     console.log("📍 Location Detected:", isMapLocation);
@@ -1295,7 +1287,7 @@
 
                 // --- LOGIC GATE 2: LEVEL 2 (Items) ---
                 if (isMemeItem || isLogicItem) {
-                    console.log("🏴‍☠️ Item Detected. Moving to Verification...");
+                    console.log("🏴☠️ Item Detected. Moving to Verification...");
 
                     if (isMemeItem) {
                         localStorage.removeItem('lastScannedLogic');

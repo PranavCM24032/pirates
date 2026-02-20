@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Crew Registration</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
     <link rel="stylesheet" href="style.css">
@@ -34,7 +57,7 @@
         .background-layer {
             position: fixed;
             inset: 0;
-            background: #000 url('images/login.png') no-repeat center center/cover;
+            background: #000 url('images/login.jpeg') no-repeat center center/cover;
             z-index: -10;
         }
 
@@ -450,14 +473,7 @@
                 transform: scale(0.7);
             }
         }
-
-        .back-btn:active {
-            transform: translateY(1px);
-            box-shadow: 0 1px 0 #271306;
-        }
     </style>
-</head>
-
 </head>
 
 <body class="overflow-y-auto">
@@ -529,7 +545,8 @@
                     </select>
                 </div>
 
-                <button type="submit" class="pirate-submit">JOIN THE HUNT →</button>
+                <button type="submit" class="pirate-submit w-full py-3 mt-4 text-[0.7rem] cursor-pointer">JOIN THE HUNT
+                    →</button>
             </form>
         </div>
     </div>
@@ -558,66 +575,62 @@
                 const eyeIcon = togglePassword.querySelector('svg');
                 const eyeClosed = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
                 const eyeOpen = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
-                if (isPass) {
-                    eyeIcon.innerHTML = eyeClosed;
-                } else {
-                    eyeIcon.innerHTML = eyeOpen;
-                }
+                eyeIcon.innerHTML = isPass ? eyeClosed : eyeOpen;
             });
 
             // Credential Logic
-            function generateCred(id) {
-                const last2 = parseInt(id.slice(-2));
-                let val = last2 - 7;
-                if (val < 0) val += 100;
-                return id + 'C' + val.toString().padStart(2, '0');
-            }
+            const generateCred = (id) => {
+                const last2 = parseInt(id.slice(-2)) || 0;
+                let val = (last2 - 7 + 100) % 100;
+                return `${id}C${val.toString().padStart(2, '0')}`;
+            };
 
-            // Load Data
+            // Load Data efficiently
             let crews = [];
             try {
                 const res = await fetch('crew.json');
                 if (res.ok) crews = await res.json();
             } catch (e) {
-                console.error("Fetch failed");
+                console.warn("Crew data fetch failed");
             }
 
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const name = nameInput.value.trim();
+                const name = nameInput.value.trim().toLowerCase();
                 const pass = passwordInput.value.trim();
                 const level = parseInt(document.getElementById('levelSelect').value);
 
                 const found = crews.find(c =>
-                    c.crewname.toLowerCase() === name.toLowerCase() &&
+                    c.crewname.toLowerCase() === name &&
                     c.password === pass
                 );
 
                 if (found) {
-                    gameState.teamData = {
-                        crewid: found.crewid,
-                        crewname: found.crewname,
-                        captain: found.captain,
-                        members: found.members,
-                        photo: found.bounty_photo,
-                        verificationCredential: generateCred(found.crewid)
-                    };
-                    gameState.currentLevel = level;
+                    Object.assign(gameState, {
+                        teamData: {
+                            crewid: found.crewid,
+                            crewname: found.crewname,
+                            captain: found.captain,
+                            members: found.members,
+                            photo: found.bounty_photo,
+                            verificationCredential: generateCred(found.crewid)
+                        },
+                        currentLevel: level
+                    });
+
                     saveGame();
 
+                    if (level === 3 && window.initLevel3Session) {
+                        window.initLevel3Session();
+                    }
 
-                    if (window.playSound) playSound('level_up');
-
-                    // LOGGING SUCCESS
+                    if (window.playSound) window.playSound('level_up');
                     if (window.logGameEvent) logGameEvent('LOGIN', { details: 'Credentials Verified', crewName: found.crewname });
 
-                    setTimeout(() => navigateNext(), 400); // Drastically reduced delay
+                    setTimeout(() => navigateNext(), 300);
                 } else {
-                    if (window.playSound) playSound('error');
-
-                    // LOGGING FAILURE
+                    if (window.playSound) window.playSound('error');
                     if (window.logGameEvent) logGameEvent('LOGIN_FAIL', { details: 'Invalid Credentials', attemptedName: name });
-
                     alert("INVALID CREDENTIALS!");
                 }
             });

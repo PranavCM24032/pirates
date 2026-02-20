@@ -5,6 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bounty Hunt - Logical Reasoning</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap">
     <link rel="stylesheet" href="style.css">
@@ -57,13 +80,63 @@
             pointer-events: none;
         }
 
+        /* Responsive for 9:16 aspect ratio */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+
+            .captain-header {
+                top: 15px;
+                font-size: clamp(0.55rem, 1.8vw, 0.8rem);
+            }
+
+            .hud-spacer {
+                height: 60px;
+            }
+
+            .glass-card {
+                max-width: 95%;
+                padding: 1.25rem;
+            }
+
+            .discovery-hint {
+                font-size: 0.7rem;
+                bottom: 30px;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            body {
+                padding: 18px;
+            }
+
+            .captain-header {
+                top: 18px;
+            }
+
+            .glass-card {
+                max-width: 32rem;
+            }
+        }
+
+        @media (min-width: 769px) {
+            body {
+                padding: 20px;
+            }
+
+            .glass-card {
+                max-width: 35rem;
+            }
+        }
+
         .bg-logical {
             position: fixed;
             top: -5%;
             left: -5%;
             width: 110%;
             height: 110%;
-            background: url('images/cave.png') no-repeat center center;
+            background: url('images/cave.jpeg') no-repeat center center;
             background-size: cover;
             filter: brightness(1.2) contrast(1.1);
             z-index: 1;
@@ -703,16 +776,19 @@
         function handleMove(e) {
             if (isTicking) return;
 
+            // Capture synchronously (PRE-RAF) to avoid event pooling/stale ref issues
+            const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+            const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+
             isTicking = true;
             requestAnimationFrame(() => {
-                const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
-                const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
-
                 document.documentElement.style.setProperty('--tx', `${clientX}px`);
                 document.documentElement.style.setProperty('--ty', `${clientY}px`);
 
                 const card = document.getElementById('logic-card');
                 const bg = document.getElementById('parallax-bg');
+
+                // Optimized movement calculations
                 const rotateY = ((clientX - window.innerWidth / 2) / window.innerWidth) * 15;
                 const rotateX = ((window.innerHeight / 2 - clientY) / window.innerHeight) * 15;
 
@@ -727,7 +803,7 @@
                 const hint = document.getElementById('discovery-hint');
                 if (hint) {
                     hint.style.opacity = '0';
-                    setTimeout(() => hint.remove(), 1000);
+                    setTimeout(() => { if (hint) hint.remove(); }, 1000);
                 }
 
                 isTicking = false;
@@ -756,6 +832,10 @@
         }
 
         function handleSuccess() {
+            if (window.logGameEvent) {
+                window.logGameEvent('VERIFY', { action: 'SUCCESS', puzzle: currentPuzzle?.queid || 'UNKNOWN' });
+            }
+
             const btn = document.getElementById('submit-btn');
             btn.style.background = '#00FF00';
             btn.innerText = 'CURSE BROKEN';
@@ -800,6 +880,10 @@
         }
 
         function handleFailure() {
+            if (window.logGameEvent) {
+                window.logGameEvent('VERIFY', { action: 'FAILURE', puzzle: currentPuzzle?.queid || 'UNKNOWN' });
+            }
+
             if (penaltyActive) return;
 
             penaltyActive = true;

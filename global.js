@@ -1,140 +1,291 @@
-// GLOBAL GAME STATE & NAVIGATION (WORKFLOW)
+/**
+ * PIRATES QUEST GLOBAL CORE
+ * Handles state management, theme application, navigation, and utility functions.
+ */
+
+// Utility Namespace
+window.PiratesUtils = {
+    /**
+     * Safe HTML Escaping to prevent XSS attacks
+     * @param {string} str 
+     * @returns {string} Safe HTML string
+     */
+    escapeHTML: (str) => {
+        if (!str || typeof str !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    },
+
+    /**
+     * Safe JSON parse with error handling
+     * @param {string} str 
+     * @param {any} fallback 
+     * @returns {any} Parsed object or fallback
+     */
+    safeJSONParse: (str, fallback = null) => {
+        try {
+            return JSON.parse(str);
+        } catch (e) {
+            console.warn('JSON parse failed:', e);
+            return fallback;
+        }
+    },
+
+    /**
+     * Debounce function for performance optimization
+     */
+    debounce: (fn, delay) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+};
+
+// Aliases for backward compatibility
+window.escapeHTML = PiratesUtils.escapeHTML;
+window.safeJSONParse = PiratesUtils.safeJSONParse;
+
+// GLOBAL GAME STATE
 const gameState = {
     teamData: null,
     currentLevel: 1,
-    scanCount: 0,      // Number of scans for average calculation
-    currentNode: null, // Current QR code scanned
-    targetNode: null,  // Node chosen by user
-    points: 0,         // Player score (Total Points)
+    scanCount: 0,
+    currentNode: null,
+    targetNode: null,
+    points: 0,
+    level3Session: null,
+    journey: []
 };
 
+window.gameState = gameState; // Export to window
+
+/**
+ * Initializes game state from localStorage
+ */
 function initGame() {
     const saved = localStorage.getItem('pirateState');
     if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-            Object.assign(gameState, parsed);
-        } catch (e) {
-            console.error("Failed to parse game state", e);
-            // Reset if corrupted
-            localStorage.removeItem('pirateState');
+        const parsed = window.safeJSONParse(saved);
+        if (parsed && typeof parsed === 'object') {
+            Object.assign(gameState, {
+                teamData: parsed.teamData || null,
+                currentLevel: parseInt(parsed.currentLevel) || 1,
+                scanCount: parseInt(parsed.scanCount) || 0,
+                currentNode: parsed.currentNode || null,
+                targetNode: parsed.targetNode || null,
+                points: parseInt(parsed.points) || 0,
+                level3Session: parsed.level3Session || null,
+                journey: parsed.journey || []
+            });
         }
     }
 }
 
+/**
+ * Saves current game state to localStorage
+ */
 function saveGame() {
-    localStorage.setItem('pirateState', JSON.stringify(gameState));
+    try {
+        localStorage.setItem('pirateState', JSON.stringify(gameState));
+        // 🆕 SYNC STANDING TO CLOUD
+        syncStandingToCloud();
+    } catch (e) {
+        console.warn('Failed to save game state:', e.name === 'QuotaExceededError' ? 'Quota exceeded' : e);
+    }
 }
 
-// Global Logging System (For Admin Panel)
-window.logGameEvent = function (type, data = {}) {
+window.saveGame = saveGame;
+
+// ===== LEVEL 3 SESSION TRACKING SYSTEM =====
+window.initLevel3Session = function () {
+    if (gameState.currentLevel !== 3 || !gameState.teamData) return false;
+
     try {
-        const logs = JSON.parse(localStorage.getItem('pirateAdminLogs') || '[]');
-        const event = {
-            timestamp: Date.now(),
-            type: type.toUpperCase(),
-            crewId: gameState.teamData ? (gameState.teamData.crewid || gameState.teamData.id) : 'UNKNOWN',
-            level: gameState.currentLevel || 1,
-            ...data
+        gameState.level3Session = {
+            crewId: gameState.teamData.crewid || gameState.teamData.id,
+            crewName: gameState.teamData.crewname || 'Unknown',
+            loginTime: Date.now(),
+            scannedNodes: [],
+            pathTrace: '',
+            totalMarks: 0,
+            avgScore: 0,
+            scanCount: 0,
+            lastScanTime: 0,
+            lastScanNode: null,
+            completed: false
         };
-        logs.push(event);
-        // Limit log size to prevent quota exceeded errors (keep last 500)
-        if (logs.length > 500) logs.shift();
-        localStorage.setItem('pirateAdminLogs', JSON.stringify(logs));
-        console.log(`[LOG] ${type}:`, event);
+
+        if (gameState.currentNode) {
+            gameState.level3Session.scannedNodes.push({
+                node: gameState.currentNode,
+                timestamp: Date.now(),
+                mark: 0
+            });
+            gameState.level3Session.pathTrace = gameState.currentNode;
+            gameState.level3Session.scanCount = 1;
+            gameState.level3Session.lastScanTime = Date.now();
+            gameState.level3Session.lastScanNode = gameState.currentNode;
+        }
+
+        saveLevel3Session();
+        return true;
     } catch (e) {
-        console.warn("Logging failed:", e);
+        console.error("Failed to init Level 3 session:", e);
+        return false;
     }
 };
 
-// Workflow / Progression System
+function saveLevel3Session() {
+    if (!gameState.level3Session) return;
+    try {
+        const sessions = window.safeJSONParse(localStorage.getItem('level3_sessions')) || [];
+        const existingIdx = sessions.findIndex(s => s.crewId === gameState.level3Session.crewId);
+        if (existingIdx >= 0) {
+            sessions[existingIdx] = gameState.level3Session;
+        } else {
+            sessions.push(gameState.level3Session);
+        }
+        localStorage.setItem('level3_sessions', JSON.stringify(sessions));
+    } catch (e) {
+        console.warn("Failed to save Level 3 session:", e);
+    }
+}
+
+window.updateLevel3Session = function (fromNode, toNode, mark) {
+    if (gameState.currentLevel !== 3 || !gameState.level3Session) return false;
+
+    try {
+        const now = Date.now();
+        const lastScanned = gameState.level3Session.scannedNodes[gameState.level3Session.scannedNodes.length - 1];
+
+        if (!lastScanned || lastScanned.node !== toNode) {
+            gameState.level3Session.scannedNodes.push({
+                node: toNode,
+                timestamp: now,
+                mark: mark
+            });
+
+            gameState.level3Session.pathTrace = gameState.level3Session.pathTrace
+                ? `${gameState.level3Session.pathTrace}->${toNode}`
+                : toNode;
+
+            gameState.level3Session.scanCount += 1;
+            gameState.level3Session.totalMarks += mark;
+            gameState.level3Session.lastScanTime = now;
+            gameState.level3Session.lastScanNode = toNode;
+
+            const transitions = Math.max(1, gameState.level3Session.scanCount - 1);
+            gameState.level3Session.avgScore = Math.round((gameState.level3Session.totalMarks / transitions) * 100) / 100;
+
+            // Update Global Points (500 base - total marks for efficiency)
+            // We assume L1 (100) and L2 (200) are already added or handled separately
+            // For real-time cloud sync, we update the points field
+            gameState.points = 300 + Math.max(0, 500 - gameState.level3Session.totalMarks);
+
+            saveLevel3Session();
+            logGameEvent('LEVEL3_SCAN', {
+                from: fromNode,
+                to: toNode,
+                mark: mark,
+                avgScore: gameState.level3Session.avgScore,
+                pathTrace: gameState.level3Session.pathTrace
+            });
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error("Failed to update Level 3 session:", e);
+        return false;
+    }
+};
+
+// Global Logging System
+window.logGameEvent = function (type, data = {}) {
+    try {
+        if (!type || typeof type !== 'string') return;
+
+        const logs = window.safeJSONParse(localStorage.getItem('pirateAdminLogs')) || [];
+        const event = {
+            timestamp: Date.now(),
+            type: type.toUpperCase().slice(0, 50),
+            crewId: gameState.teamData ? window.escapeHTML(String(gameState.teamData.crewid || gameState.teamData.id)).slice(0, 50) : 'UNKNOWN',
+            level: parseInt(gameState.currentLevel) || 1,
+            ...Object.keys(data).reduce((acc, key) => {
+                const val = data[key];
+                if (typeof val === 'string') acc[key] = val.slice(0, 200);
+                else if (typeof val === 'number' || typeof val === 'boolean') acc[key] = val;
+                return acc;
+            }, {})
+        };
+
+        logs.push(event);
+        if (logs.length > 200) logs.shift(); // Keep last 200 logs
+        localStorage.setItem('pirateAdminLogs', JSON.stringify(logs));
+
+        // 🆕 REAL-TIME CLOUD SYNC
+        syncToCloud(event);
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            localStorage.removeItem('pirateAdminLogs');
+        }
+    }
+};
+
+// Navigation System
 function navigateTo(url) {
     if (!url || typeof url !== 'string') return;
 
-    // Support for View Transitions API (Chrome 111+)
     if (document.startViewTransition) {
         document.startViewTransition(() => {
             window.location.href = url;
         });
     } else {
-        // Fallback smooth transition - much faster
-        document.body.style.transition = 'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease';
+        document.body.style.transition = 'opacity 0.3s ease, filter 0.3s ease';
         document.body.style.opacity = '0';
-        document.body.style.filter = 'blur(5px) brightness(0.5)';
-
-        setTimeout(() => {
-            window.location.replace(url);
-        }, 300);
+        document.body.style.filter = 'blur(10px)';
+        setTimeout(() => window.location.href = url, 300);
     }
 }
+
+window.navigateTo = navigateTo;
 
 function navigateNext() {
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
     const level = gameState.currentLevel;
 
-    // Updated Flow: Loader -> DisplayCrew -> Login -> Rest of the Game
     const workflows = {
         1: ['index.html', 'displaycrew.html', 'login.html', 'bountyperson.html'],
         2: ['index.html', 'displaycrew.html', 'login.html', 'qr.html', 'verification.html', 'logical.html'],
-        3: ['index.html', 'displaycrew.html', 'login.html', 'qr.html', 'location.html', 'celebration.html']
+        3: ['index.html', 'displaycrew.html', 'login.html', 'location.html', 'celebration.html']
     };
 
-    const currentFlow = workflows[level];
-    if (!currentFlow) {
-        navigateTo('login.html');
-        return;
-    }
-
+    const currentFlow = workflows[level] || workflows[1];
     const idx = currentFlow.indexOf(currentPage);
+
     if (idx !== -1 && idx < currentFlow.length - 1) {
         navigateTo(currentFlow[idx + 1]);
     } else {
-        // Fallback or restart flow
-        if (currentPage === 'login.html') {
-            navigateTo(currentFlow[currentFlow.indexOf('login.html') + 1] || 'bountyperson.html');
-        } else {
-            navigateTo('login.html');
-        }
+        navigateTo('login.html');
     }
 }
 
-function setLevel(level) {
-    gameState.currentLevel = parseInt(level);
-    saveGame();
-}
+window.navigateNext = navigateNext;
 
-// Global Link Interceptor for smooth transitions
-document.addEventListener('click', (e) => {
-    const anchor = e.target.closest('a');
-    if (anchor && anchor.href && anchor.target !== '_blank' && !anchor.href.startsWith('javascript:')) {
-        e.preventDefault();
-        navigateTo(anchor.href);
-    }
-});
-
-/**
- * Generates Minecraft-style block CSS (Background Texture + Pixel Border)
- * @param {string} colorMain - Main face color (e.g. #8B4513)
- * @param {string} colorDark - Darker texture/contrast color (e.g. #733C10)
- * @param {string} colorBorder - Darkest border/shadow color (e.g. #5A2D0C)
- * @returns {object} { backgroundImage, borderImage } CSS values
- */
-const blockStyleCache = {};
+// Minecraft Block Style System
+const blockStyleCache = new Map();
 
 function createMinecraftBlockStyle(colorMain, colorDark, colorBorder) {
     const cacheKey = `${colorMain}-${colorDark}-${colorBorder}`;
-    if (blockStyleCache[cacheKey]) {
-        return blockStyleCache[cacheKey];
-    }
+    if (blockStyleCache.has(cacheKey)) return blockStyleCache.get(cacheKey);
 
     const cMain = encodeURIComponent(colorMain);
     const cDark = encodeURIComponent(colorDark);
     const cBorder = encodeURIComponent(colorBorder);
 
-    // 1. Texture Pattern (60x60 checker-like)
     const bgSvg = `data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="60" fill="${cMain}"/><rect x="0" y="0" width="30" height="30" fill="${cDark}"/><rect x="30" y="30" width="30" height="30" fill="${cDark}"/></svg>`;
-
-    // 2. Pixel Border (16x16 with 2px simulated width)
     const borderSvg = `data:image/svg+xml,<svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" fill="${cBorder}"/><rect x="2" y="2" width="12" height="12" fill="${cMain}"/></svg>`;
 
     const style = {
@@ -142,273 +293,87 @@ function createMinecraftBlockStyle(colorMain, colorDark, colorBorder) {
         borderImage: `url('${borderSvg}') 6 stretch`
     };
 
-    blockStyleCache[cacheKey] = style;
+    blockStyleCache.set(cacheKey, style);
     return style;
 }
 
+window.createMinecraftBlockStyle = createMinecraftBlockStyle;
+
 function applyTheme() {
-    // 1. Pirate Wood Theme (Login)
-    const woodElements = document.querySelectorAll('.wooden-container');
-    if (woodElements.length > 0) {
-        const woodStyle = createMinecraftBlockStyle('#8B4513', '#733C10', '#5A2D0C');
-        woodElements.forEach(el => {
-            el.style.backgroundImage = woodStyle.backgroundImage;
-            el.style.border = '8px solid transparent'; // Improved border width
-            el.style.borderImage = woodStyle.borderImage;
-            el.style.backgroundSize = '80px 80px';
-            el.style.imageRendering = 'pixelated';
-            el.style.position = 'relative';
-        });
-    }
+    const themeMap = [
+        { selector: '.wooden-container', colors: { main: '#8B4513', dark: '#733C10', border: '#5A2D0C' }, config: { size: '80px 80px', borderWidth: '8px' } },
+        { selector: '.wood-block, .corner-block', colors: { main: '#9B5523', dark: '#8B4513', border: '#3D1F08' }, config: { size: '20px 20px', borderWidth: '2px' } },
+        { selector: '.glass-block, .glass-corner', colors: { main: 'rgba(173, 216, 230, 0.3)', dark: 'rgba(255, 255, 255, 0.4)', border: '#ffffff' }, config: { size: '20px 20px', borderWidth: '1px', backdropFilter: 'blur(4px)' } },
+        { selector: '.loading-bar-container', colors: { main: '#333333', dark: '#222222', border: '#111111' }, config: { size: '40px 40px', borderWidth: '4px' } },
+        { selector: '.wanted-poster', colors: { main: '#f5f5dc', dark: '#dfdfbf', border: '#3e2723' }, config: { size: '60px 60px', borderWidth: '8px' } },
+        { selector: '.stone-container', colors: { main: '#555555', dark: '#444444', border: '#222222' }, config: { size: '40px 40px', borderWidth: '6px' } },
+        { selector: '.glass-panel, .glass-container, .lens-overlay', colors: { main: 'rgba(255, 255, 255, 0.1)', dark: 'rgba(255, 255, 255, 0.05)', border: '#ffffff' }, config: { size: '40px 40px', borderWidth: '6px', backdropFilter: 'blur(12px) brightness(1.1)' } },
+        { selector: '.ash-container', colors: { main: '#444444', dark: '#2C2C2C', border: '#1A1A1A' }, config: { size: '40px 40px', borderWidth: '6px' } },
+        { selector: '.fire-container', colors: { main: '#FF4500', dark: '#8B0000', border: '#3E0000' }, config: { size: '30px 30px', borderWidth: '6px', boxShadow: '0 0 15px rgba(255, 69, 0, 0.4)' } },
+        { selector: '.emerald-container', colors: { main: '#00A86B', dark: '#00703B', border: '#004020' }, config: { size: '40px 40px', borderWidth: '6px', boxShadow: '0 0 10px rgba(0, 168, 107, 0.3)' } }
+    ];
 
-    // NEW: Apply pixelated textures to decorative WOOD blocks
-    const woodDecorationBlocks = document.querySelectorAll('.wood-block, .corner-block');
-    woodDecorationBlocks.forEach(el => {
-        const style = createMinecraftBlockStyle('#9B5523', '#8B4513', '#3D1F08');
-        el.style.backgroundImage = style.backgroundImage;
-        el.style.backgroundSize = '20px 20px';
-        el.style.imageRendering = 'pixelated';
-        el.style.border = '2px solid rgba(0,0,0,0.3)';
+    themeMap.forEach(({ selector, colors, config }) => {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length === 0) return;
+
+        const style = createMinecraftBlockStyle(colors.main, colors.dark, colors.border);
+
+        elements.forEach(el => {
+            const s = el.style;
+            s.backgroundImage = style.backgroundImage;
+            s.backgroundSize = config.size;
+            s.border = `${config.borderWidth} solid transparent`;
+            s.borderImage = style.borderImage;
+            s.imageRendering = 'pixelated';
+
+            if (config.backdropFilter) s.backdropFilter = config.backdropFilter;
+            if (config.boxShadow) s.boxShadow = config.boxShadow;
+
+            if (selector.includes('glass')) {
+                s.borderRadius = '2px';
+                s.position = 'relative';
+            }
+        });
     });
-
-    // NEW: Apply pixelated textures to decorative GLASS blocks
-    const glassDecorationBlocks = document.querySelectorAll('.glass-block, .glass-corner');
-    glassDecorationBlocks.forEach(el => {
-        // High-clarity light blue/white glass
-        const style = createMinecraftBlockStyle('rgba(173, 216, 230, 0.3)', 'rgba(255, 255, 255, 0.4)', '#ffffff');
-        el.style.backgroundImage = style.backgroundImage;
-        el.style.backgroundSize = '20px 20px';
-        el.style.imageRendering = 'pixelated';
-        el.style.border = '1px solid rgba(255, 255, 255, 0.5)';
-        el.style.backdropFilter = 'blur(4px)';
-    });
-
-    // 2. Deepslate/Stone Theme (Loading Bar on Index)
-    const loadingContainers = document.querySelectorAll('.loading-bar-container');
-    if (loadingContainers.length > 0) {
-        const stoneStyle = createMinecraftBlockStyle('#333333', '#222222', '#111111');
-        loadingContainers.forEach(el => {
-            el.style.backgroundImage = stoneStyle.backgroundImage;
-            el.style.border = '4px solid transparent';
-            el.style.borderImage = stoneStyle.borderImage;
-            el.style.backgroundSize = '40px 40px';
-        });
-    }
-
-    // 3. Wanted Poster (Paper/Parchment Style)
-    const posters = document.querySelectorAll('.wanted-poster');
-    if (posters.length > 0) {
-        const paperStyle = createMinecraftBlockStyle('#f5f5dc', '#dfdfbf', '#3e2723');
-        posters.forEach(el => {
-            el.style.backgroundImage = paperStyle.backgroundImage;
-            el.style.border = '8px solid transparent';
-            el.style.borderImage = paperStyle.borderImage;
-            el.style.backgroundSize = '60px 60px';
-            el.style.imageRendering = 'pixelated';
-        });
-    }
-
-    // 4. Ancient Stone Theme (for Logical Riddles/Buttons)
-    const stoneContainers = document.querySelectorAll('.stone-container');
-    if (stoneContainers.length > 0) {
-        const stoneStyle = createMinecraftBlockStyle('#555555', '#444444', '#222222');
-        stoneContainers.forEach(el => {
-            el.style.backgroundImage = stoneStyle.backgroundImage;
-            el.style.border = '6px solid transparent';
-            el.style.borderImage = stoneStyle.borderImage;
-            el.style.backgroundSize = '40px 40px';
-            el.style.imageRendering = 'pixelated';
-        });
-    }
-
-    // 5. Pixelated Glass Theme (for Scanner, Lenses, Overlays)
-    const glassElements = document.querySelectorAll('.glass-panel, .glass-container, .lens-overlay');
-    if (glassElements.length > 0) {
-        // Minecraft Crystal/Stained Glass Look (Light Alpha + White Pixel Border)
-        const glassStyle = createMinecraftBlockStyle('rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)', '#ffffff');
-        glassElements.forEach(el => {
-            el.style.backgroundImage = glassStyle.backgroundImage;
-            el.style.border = '6px solid transparent';
-            el.style.borderImage = glassStyle.borderImage;
-            el.style.backgroundSize = '40px 40px';
-            el.style.backdropFilter = 'blur(12px) brightness(1.1)';
-            el.style.imageRendering = 'pixelated';
-            el.style.borderRadius = '2px'; // Square blocky look for Minecraft
-            el.style.position = 'relative';
-        });
-    }
-
-    // 6. Ash/Basalt Theme (Dark Grey/Charcoal)
-    const ashElements = document.querySelectorAll('.ash-container');
-    if (ashElements.length > 0) {
-        const ashStyle = createMinecraftBlockStyle('#444444', '#2C2C2C', '#1A1A1A');
-        ashElements.forEach(el => {
-            el.style.backgroundImage = ashStyle.backgroundImage;
-            el.style.border = '6px solid transparent';
-            el.style.borderImage = ashStyle.borderImage;
-            el.style.backgroundSize = '40px 40px';
-            el.style.imageRendering = 'pixelated';
-        });
-    }
-
-    // 7. Fire/Magma Theme (Glowing Orange/Red)
-    const fireElements = document.querySelectorAll('.fire-container');
-    if (fireElements.length > 0) {
-        const fireStyle = createMinecraftBlockStyle('#FF4500', '#8B0000', '#3E0000');
-        fireElements.forEach(el => {
-            el.style.backgroundImage = fireStyle.backgroundImage;
-            el.style.border = '6px solid transparent';
-            el.style.borderImage = fireStyle.borderImage;
-            el.style.backgroundSize = '30px 30px';
-            el.style.imageRendering = 'pixelated';
-            el.style.boxShadow = '0 0 15px rgba(255, 69, 0, 0.4)';
-        });
-    }
-
-    // 8. Emerald/Gem Theme (Vibrant Green)
-    const emeraldElements = document.querySelectorAll('.emerald-container');
-    if (emeraldElements.length > 0) {
-        const emeraldStyle = createMinecraftBlockStyle('#00A86B', '#00703B', '#004020');
-        emeraldElements.forEach(el => {
-            el.style.backgroundImage = emeraldStyle.backgroundImage;
-            el.style.border = '6px solid transparent';
-            el.style.borderImage = emeraldStyle.borderImage;
-            el.style.backgroundSize = '40px 40px';
-            el.style.imageRendering = 'pixelated';
-            el.style.boxShadow = '0 0 10px rgba(0, 168, 107, 0.3)';
-        });
-    }
 }
 
-// Global Sound Loader
-(async function () {
-    try {
-        const sc = document.createElement('script');
-        sc.src = 'sound.js';
-        sc.onerror = () => console.warn('Failed to load sound.js');
-        document.head.appendChild(sc);
-    } catch (err) {
-        console.error('Error initializing sound system:', err);
-    }
-})();
-
-function showAchievement(title, desc, icon) {
-    if (window.playSound) playSound('success');
-    // Implementation placeholder 
-}
-
-// --- Global HUD Layout System ---
+// Global HUD
 function injectGlobalHUD() {
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
     const excludedPages = ['index.html', 'displaycrew.html', 'login.html'];
 
-    // Only inject on target internal pages
-    if (excludedPages.includes(currentPage)) return;
-    if (document.querySelector('.global-hud')) return;
+    if (excludedPages.includes(currentPage) || document.querySelector('.global-hud')) return;
 
     const hud = document.createElement('div');
     hud.className = 'global-hud';
-
-    // Logo (Top Left)
-    const logoLink = document.createElement('a');
-    logoLink.href = "login.html"; // Default back to login/home
-    logoLink.innerHTML = `<img src="images/logo.png" alt="Bounty Pirates" class="tv-logo">`;
-
-    // Timer Container (Top Right - handled by initClientTimer)
-    const timerSlot = document.createElement('div');
-    timerSlot.id = 'hud-timer-slot';
-
-    hud.appendChild(logoLink);
-    hud.appendChild(timerSlot);
+    hud.innerHTML = `
+        <a href="login.html"><img src="images/logo.png" alt="Bounty Pirates" class="tv-logo"></a>
+        <div id="hud-timer-slot"></div>
+    `;
     document.body.appendChild(hud);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initGame();
-    applyTheme();
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    const excludedPages = ['index.html', 'displaycrew.html', 'login.html'];
-
-    injectGlobalHUD();
-
-    // Only init timer if we are NOT on excluded pages or admin timer
-    if (!excludedPages.includes(currentPage) && !window.location.pathname.includes('timer.html')) {
-        initClientTimer();
-    }
-
-    // --- Interactive 3D Camera Parallax (Refined) ---
-    // --- Interactive 3D Camera Parallax (Refined & Optimized) ---
-    // Cache targets to avoid querying DOM on every frame
-    const bgTargets = document.querySelectorAll('.bg-layer, .bg-moving, .ocean-bg, .scenery-bg, .bg-image, .background-layer, .bg-logical');
-    const contentTargets = document.querySelectorAll('.content-wrapper, .wooden-container, .minecraft-panel, .logical-container');
-
-    // Only add listener if not mobile (optimization)
-    if (window.matchMedia("(pointer: fine)").matches) {
-        let isTicking = false;
-        const moveHandler = (e) => {
-            if (isTicking) return;
-            isTicking = true;
-            requestAnimationFrame(() => {
-                const x = (e.clientX / window.innerWidth - 0.5);
-                const y = (e.clientY / window.innerHeight - 0.5);
-
-                const bgTransform = `translate3d(${x * -20}px, ${y * -20}px, 0)`; // use translate3d for GPU accel
-                bgTargets.forEach(el => el.style.transform = bgTransform);
-
-                const contentTransform = `perspective(1000px) rotateX(${y * -5}deg) rotateY(${x * 5}deg) translateZ(10px)`;
-                contentTargets.forEach(el => el.style.transform = contentTransform);
-
-                isTicking = false;
-            });
-        };
-        document.addEventListener('mousemove', moveHandler, { passive: true });
-    }
-});
-
-// --- Client Timer Sync Logic ---
+// Client Timer Sync
 function initClientTimer() {
-    // strict mode check if timer element exists
     if (document.getElementById('client-timer-display')) return;
 
-    const slot = document.getElementById('hud-timer-slot');
-    const timerContainer = document.createElement('div');
-    timerContainer.id = 'client-timer-display';
-    timerContainer.className = 'tv-timer';
-    timerContainer.style.display = 'none'; // Hidden until active
-    timerContainer.innerHTML = `<span id="ct-h">00</span>:<span id="ct-m">00</span>:<span id="ct-s">00</span>`;
+    const slot = document.getElementById('hud-timer-slot') || document.body;
+    const timerDisplay = document.createElement('div');
+    timerDisplay.id = 'client-timer-display';
+    timerDisplay.className = 'tv-timer';
+    timerDisplay.style.display = 'none';
+    timerDisplay.innerHTML = `<span id="ct-h">00</span>:<span id="ct-m">00</span>:<span id="ct-s">00</span>`;
 
-    if (slot) {
-        slot.appendChild(timerContainer);
-    } else {
-        // Fallback for centered pages that might still want a timer
-        timerContainer.style.cssText = `
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            background: transparent;
-            border: none;
-            color: #FFD700;
-            padding: 0;
-            font-family: 'Pixelify Sans', sans-serif;
-            font-size: 1.2rem;
-            font-weight: bold;
-            z-index: 9999;
-            text-shadow: 2px 2px 0 #000;
-            display: none;
-            pointer-events: none;
-            user-select: none;
-        `;
-        document.body.appendChild(timerContainer);
+    if (!document.getElementById('hud-timer-slot')) {
+        timerDisplay.style.cssText = `position:fixed;top:15px;right:15px;color:#FFD700;font-family:'Pixelify Sans',sans-serif;font-size:1.2rem;font-weight:bold;z-index:9999;text-shadow:2px 2px 0 #000;display:none;pointer-events:none;`;
     }
+    slot.appendChild(timerDisplay);
 
-    const spans = {
-        h: document.getElementById('ct-h'),
-        m: document.getElementById('ct-m'),
-        s: document.getElementById('ct-s'),
-        box: timerContainer
-    };
+    const spans = { h: null, m: null, s: null };
+    let timerId = null;
 
-    function updateClientTimer() {
+    const updateUI = () => {
         const rawState = localStorage.getItem('pirate_timer_state');
         if (!rawState) return;
 
@@ -417,66 +382,160 @@ function initClientTimer() {
             const now = Date.now();
             let displayTime = state.remaining;
 
-            // If running, estimate current time based on drift
             if (state.isRunning) {
                 const elapsed = Math.floor((now - state.timestamp) / 1000);
                 displayTime = Math.max(0, state.remaining - elapsed);
             }
 
-            // Update UI Visibility
-            if (displayTime > 0 || state.isFinished) {
-                spans.box.style.display = 'block';
-            }
+            if (displayTime > 0 || state.isFinished) timerDisplay.style.display = 'block';
 
-            const fmt = n => n.toString().padStart(2, '0');
-            const h = Math.floor(displayTime / 3600);
-            const m = Math.floor((displayTime % 3600) / 60);
-            const s = displayTime % 60;
-
-            // HANDLE STATE: FINISHED vs RUNNING
             if (state.isFinished || (displayTime === 0 && state.isRunning)) {
-                if (spans.box.innerHTML !== "TIME UP") {
-                    spans.box.innerHTML = "TIME UP";
-                    spans.box.style.color = "#FF5555"; // Red text for Time Up is still good
-                }
+                timerDisplay.innerHTML = "TIME UP";
+                timerDisplay.style.color = "#FF5555";
                 return;
             }
 
-            // If we are NOT finished, ensure the DOM structure is correct
-            // (It might be currently showing "TIME UP" if we just reset)
+            // Restore spans if innerHTML was changed to "TIME UP"
             if (!document.getElementById('ct-h')) {
-                spans.box.innerHTML = `<span id="ct-h"></span>:<span id="ct-m"></span>:<span id="ct-s"></span>`;
-                // Re-bind references
-                spans.h = document.getElementById('ct-h');
-                spans.m = document.getElementById('ct-m');
-                spans.s = document.getElementById('ct-s');
+                timerDisplay.innerHTML = `<span id="ct-h"></span>:<span id="ct-m"></span>:<span id="ct-s"></span>`;
             }
 
-            // Now safely update the text
-            spans.h.textContent = fmt(h);
-            spans.m.textContent = fmt(m);
-            spans.s.textContent = fmt(s);
+            spans.h = spans.h || document.getElementById('ct-h');
+            spans.m = spans.m || document.getElementById('ct-m');
+            spans.s = spans.s || document.getElementById('ct-s');
 
-            // Urgency Logic (Red if <= 59s)
-            if (displayTime <= 59) {
-                spans.box.style.color = '#FF4500'; // Orange-Red warning
-                spans.box.style.animation = 'pulse 1s infinite';
-            } else {
-                spans.box.style.color = '#FFD700'; // Gold normal
-                spans.box.style.animation = 'none';
+            if (spans.h) {
+                const fmt = n => n.toString().padStart(2, '0');
+                spans.h.textContent = fmt(Math.floor(displayTime / 3600));
+                spans.m.textContent = fmt(Math.floor((displayTime % 3600) / 60));
+                spans.s.textContent = fmt(displayTime % 60);
+
+                timerDisplay.style.color = displayTime <= 59 ? '#FF4500' : '#FFD700';
+                timerDisplay.style.animation = displayTime <= 59 ? 'pulse 1s infinite' : 'none';
             }
+        } catch (e) { console.error("Timer update failed", e); }
+    };
 
-        } catch (e) {
-            console.error("Timer sync error", e);
-        }
+    timerId = setInterval(updateUI, 500); // 500ms is enough for a timer
+    updateUI();
+
+    const cleanup = () => { if (timerId) clearInterval(timerId); };
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+}
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    initGame();
+    applyTheme();
+    injectGlobalHUD();
+
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const excludedPages = ['index.html', 'displaycrew.html', 'login.html'];
+    if (!excludedPages.includes(currentPage) && !window.location.pathname.includes('timer.html')) {
+        initClientTimer();
     }
 
-    // Sync efficiently (250ms is enough for a ticking clock to feel live)
-    const timerId = setInterval(updateClientTimer, 250);
-    updateClientTimer(); // Initial call
+    // Sound Loader
+    const sc = document.createElement('script');
+    sc.src = 'sound.js';
+    sc.async = true;
+    document.head.appendChild(sc);
 
-    // Cleanup timer on unload to prevent memory leaks
-    window.addEventListener('beforeunload', () => {
-        if (timerId) clearInterval(timerId);
+    // Parallax
+    if (window.matchMedia("(pointer: fine)").matches) {
+        const bgTargets = document.querySelectorAll('.bg-layer, .bg-moving, .ocean-bg, .scenery-bg, .bg-image, .background-layer, .bg-logical');
+        const contentTargets = document.querySelectorAll('.content-wrapper, .wooden-container, .minecraft-panel, .logical-container');
+
+        let ticking = false;
+        document.addEventListener('mousemove', (e) => {
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    const x = (e.clientX / window.innerWidth - 0.5);
+                    const y = (e.clientY / window.innerHeight - 0.5);
+                    bgTargets.forEach(el => el.style.transform = `translate3d(${x * -20}px, ${y * -20}px, 0)`);
+                    contentTargets.forEach(el => el.style.transform = `perspective(1000px) rotateX(${y * -5}deg) rotateY(${x * 5}deg) translateZ(10px)`);
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }, { passive: true });
+    }
+
+    // Link Interceptor
+    document.addEventListener('click', (e) => {
+        const anchor = e.target.closest('a');
+        if (anchor && anchor.href && anchor.target !== '_blank' && !anchor.href.startsWith('javascript:') && anchor.origin === window.location.origin) {
+            e.preventDefault();
+            navigateTo(anchor.href);
+        }
+    });
+});
+
+// ===== 🆕 REAL-TIME CLOUD SYNC SYSTEM =====
+// ===== 🆕 REAL-TIME CLOUD SYNC SYSTEM (ROBUST FOR 70+ TEAMS) =====
+const CLOUD_CONFIG = {
+    endpoint: 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec',
+    maxRetries: 3,
+    retryDelay: 2000 // Start with 2s delay
+};
+
+/**
+ * Robust fetch with exponential backoff for high concurrency
+ */
+async function reliableFetch(payload, attempt = 1) {
+    if (!CLOUD_CONFIG.endpoint) return;
+
+    try {
+        await fetch(CLOUD_CONFIG.endpoint, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        // Success (or at least sent)
+    } catch (e) {
+        if (attempt <= CLOUD_CONFIG.maxRetries) {
+            const delay = CLOUD_CONFIG.retryDelay * Math.pow(2, attempt - 1); // 2s, 4s, 8s
+            console.warn(`Cloud sync busy (Attempt ${attempt}). Retrying in ${delay}ms...`);
+            setTimeout(() => reliableFetch(payload, attempt + 1), delay + (Math.random() * 500)); // Add jitter
+        } else {
+            console.error('Cloud sync failed after max retries. Data queued locally.');
+            // Ideally, queue locally to retry later, but for now just log
+        }
+    }
+}
+
+function syncToCloud(event) {
+    reliableFetch({
+        action: 'LOG_EVENT',
+        event: {
+            Timestamp: new Date(event.timestamp).toLocaleString(),
+            Type: event.type,
+            Category: event.crewId,
+            Raw: JSON.stringify(event)
+        }
     });
 }
+
+const syncStandingToCloud = PiratesUtils.debounce(() => {
+    if (!gameState.teamData) return;
+
+    const standing = {
+        Rank: "-",
+        CrewID: gameState.teamData.crewid,
+        Name: gameState.teamData.crewname,
+        Status: gameState.currentLevel >= 3 ? 'LEVEL_3_RACE' : (gameState.currentLevel === 2 ? 'LEVEL_2_CERTIFIED' : 'ACTIVE'),
+        Score_L1: "-",
+        Score_L2: "-",
+        Score_L3: (gameState.level3Session?.totalMarks || 0),
+        Total_Points: (gameState.points || 0).toFixed(2),
+        Last_Seen: new Date().toLocaleTimeString()
+    };
+
+    reliableFetch({
+        action: 'UPDATE_CREW',
+        crewData: standing
+    });
+}, 5000); // Increased debounce to 5s to reduce load
+

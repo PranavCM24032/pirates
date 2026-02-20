@@ -5,6 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bounty - Video Transmission</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
     <style>
         * {
@@ -60,6 +83,26 @@
             background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.95) 100%);
             z-index: 100;
             pointer-events: none;
+        }
+
+        /* Responsive for 9:16 aspect ratio */
+        @media (max-width: 480px) {
+            .video-wrapper {
+                width: 100vw;
+                height: 100dvh;
+            }
+
+            iframe {
+                width: 100% !important;
+                height: 100% !important;
+            }
+        }
+
+        @media (min-width: 481px) {
+            .video-wrapper {
+                width: 100%;
+                height: 100%;
+            }
         }
 
         /* Interaction blocker */

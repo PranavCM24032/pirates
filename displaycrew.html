@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Crew Registry</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
 
     <!-- Pirate Fonts -->
     <link
@@ -45,7 +68,7 @@
         .bg-layer {
             position: fixed;
             inset: 0;
-            background: url('images/display.png') no-repeat center/cover;
+            background: url('images/display.jpeg') no-repeat center/cover;
             z-index: -3;
             filter: brightness(0.75);
         }

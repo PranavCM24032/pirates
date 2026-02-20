@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="view-transition" content="same-origin">
     <title>Pirate Quest Timer</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400..700&display=swap"
@@ -483,16 +506,36 @@
             }
 
             .timer-huge {
-                flex-direction: column;
-                gap: 0;
+                gap: 10px;
+                padding: 10px;
+            }
+
+            .time-box {
+                font-size: clamp(2.5rem, 15vw, 6rem);
+                min-width: 1.5ch;
             }
 
             .dots {
-                display: none;
+                font-size: clamp(1.5rem, 10vw, 4rem);
+                margin-top: -0.5rem;
             }
 
             .grand-title {
-                font-size: 2.5rem;
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .timer-huge {
+                gap: 5px;
+            }
+
+            .time-box {
+                font-size: clamp(2rem, 18vw, 4rem);
+            }
+
+            .dots {
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -716,7 +759,11 @@
 
             timer.isRunning = true;
             timer.isFinished = false;
-            timer.interval = setInterval(tick, 1000);
+
+            // DRIFT FIX: Calculate target end time based on current remaining seconds
+            timer.endTime = Date.now() + (timer.remaining * 1000);
+
+            timer.interval = setInterval(tick, 200); // Check more frequently for responsiveness
 
             // Visual Updates
             display.actionBtn.textContent = "PAUSE TIMER";
@@ -730,6 +777,15 @@
             stopInterval();
             timer.isRunning = false;
 
+            // Capture exact remaining time for resume
+            // (No need to recalc remaining here as tick() keeps it updated, 
+            // but for safety/precision on pause click):
+            if (timer.endTime) {
+                const now = Date.now();
+                const left = Math.ceil((timer.endTime - now) / 1000);
+                timer.remaining = Math.max(0, left);
+            }
+
             display.actionBtn.textContent = "RESUME TIMER";
             display.actionBtn.className = "btn-large btn-grass";
             updateDisplay();
@@ -741,10 +797,22 @@
         }
 
         function tick() {
-            if (timer.remaining > 0) {
-                timer.remaining--;
-                updateDisplay();
+            const now = Date.now();
+            if (!timer.endTime) return;
+
+            // Calculate remaining based on delta
+            const diff = timer.endTime - now;
+            const secLeft = Math.ceil(diff / 1000);
+
+            if (secLeft > 0) {
+                // Update state if changed
+                if (timer.remaining !== secLeft) {
+                    timer.remaining = secLeft;
+                    updateDisplay();
+                }
             } else {
+                timer.remaining = 0;
+                updateDisplay();
                 finishGame();
             }
         }
@@ -753,6 +821,7 @@
             stopInterval();
             timer.isRunning = false;
             timer.isFinished = true;
+            timer.endTime = null; // Clear
             updateDisplay();
 
             // Trigger Video
@@ -778,33 +847,29 @@
         }
 
         // --- Adjustment Logic ---
-
-        function adjustTime(multiplier) {
-            const h = parseInt(document.getElementById('adj-h').value) || 0;
-            const m = parseInt(document.getElementById('adj-m').value) || 0;
-            const s = parseInt(document.getElementById('adj-s').value) || 0;
-
-            const amount = (h * 3600) + (m * 60) + s;
-            const delta = amount * multiplier;
+        function adjustTime(multiplier, specificDelta = null) {
+            let delta;
+            if (specificDelta !== null) {
+                delta = specificDelta * multiplier;
+            } else {
+                const h = parseInt(document.getElementById('adj-h').value) || 0;
+                const m = parseInt(document.getElementById('adj-m').value) || 0;
+                const s = parseInt(document.getElementById('adj-s').value) || 0;
+                delta = ((h * 3600) + (m * 60) + s) * multiplier;
+            }
 
             if (delta === 0) return;
-
             timer.remaining += delta;
-
-            // Prevent negative time
             if (timer.remaining < 0) timer.remaining = 0;
 
-            // If the timer is NOT running (and not finished), update the "Total" start time too
-            // so if they click start, it starts from this new value.
-            if (!timer.isRunning && !timer.isFinished) {
+            if (timer.isRunning) {
+                timer.endTime = Date.now() + (timer.remaining * 1000);
+            } else if (!timer.isFinished) {
                 timer.totalSeconds = timer.remaining;
-
-                // Sync the "Set Duration" inputs to match the new total
                 inputs.h.value = format(Math.floor(timer.remaining / 3600));
                 inputs.m.value = format(Math.floor((timer.remaining % 3600) / 60));
                 inputs.s.value = format(timer.remaining % 60);
             }
-
             updateDisplay();
         }
 
@@ -817,7 +882,29 @@
         // Initial setup
         initTimer();
 
+        // --- Remote Control Hub ---
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'pirate_timer_command') {
+                try {
+                    const cmd = JSON.parse(e.newValue || '{}');
+                    if (!cmd.action || Date.now() - cmd.timestamp > 5000) return;
+                    if (cmd.action === 'INIT') {
+                        inputs.h.value = format(cmd.data.h || 0);
+                        inputs.m.value = format(cmd.data.m || 0);
+                        inputs.s.value = format(cmd.data.s || 0);
+                        initTimer();
+                    } else if (cmd.action === 'TOGGLE') {
+                        toggleTimer();
+                    } else if (cmd.action === 'ADJUST') {
+                        adjustTime(cmd.data.delta > 0 ? 1 : -1, Math.abs(cmd.data.delta));
+                    } else if (cmd.action === 'RESET') {
+                        resetSystem();
+                    }
+                } catch (err) { console.error('Remote cmd error', err); }
+            }
+        });
     </script>
+
 </body>
 
 </html>

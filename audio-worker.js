@@ -20,7 +20,6 @@ class BackgroundScheduler {
         this.timer = null;
         this.currentIndex = 0;
         this.lastExecutionTime = 0;
-        this.performanceMode = 'balanced'; // 'balanced' or 'performance'
 
         // Balanced Melody: low-volume, energetic, and less piercing loop
         // Minecraft-inspired Ambient Melody (C form of "Wet Hands" style / Calm 3)
@@ -51,7 +50,7 @@ class BackgroundScheduler {
 
     /**
      * High-Performance Scheduling with Adaptive Timing
-     * Uses requestAnimationFrame-like timing for precision
+     * Uses setTimeout for reliability and battery efficiency
      */
     processNext() {
         if (!this.isRunning) return;
@@ -81,13 +80,34 @@ class BackgroundScheduler {
         // Advance index (Circular Queue)
         this.currentIndex = (this.currentIndex + 1) % this.melody.length;
 
-        // Adaptive Timing with reduced jitter for smoothness
-        const jitter = this.performanceMode === 'performance' ? 0 : Math.random() * 30;
-        const nextDelay = task.duration + jitter;
+        // Drift Correction Logic
+        const expectedTime = this.lastExecutionTime + task.duration;
+        const drift = now - this.lastExecutionTime; // Time unrelated to schedule, for stats
+
+        // Calculate next delay based on *expected* time vs *now*
+        // We want the NEXT note to start at: this.lastExecutionTime + task.duration
+        // So we wait: (this.lastExecutionTime + task.duration) - now
+
+        let nextDelay = (this.lastExecutionTime + task.duration) - now;
+
+        // Safety for huge lags (if tab was backgrounded for minutes)
+        if (nextDelay < 0) {
+            // We are late. Catch up by playing immediately (or skip if too late? play immediate for now)
+            nextDelay = 0;
+            // Reset reference to avoid burst
+            this.lastExecutionTime = now;
+        } else {
+            // Standard progression
+            this.lastExecutionTime += task.duration;
+        }
+
+        // Clear any existing timer before setting new one
+        if (this.timer) {
+            clearTimeout(this.timer);
+        }
 
         // Use setTimeout for better battery performance
         this.timer = setTimeout(() => this.processNext(), nextDelay);
-        this.lastExecutionTime = now;
     }
 
     start(startIndex = 0) {
@@ -106,16 +126,11 @@ class BackgroundScheduler {
         }
     }
 
-    setPerformanceMode(mode) {
-        this.performanceMode = mode;
-    }
-
     getStatus() {
         return {
             isRunning: this.isRunning,
             currentIndex: this.currentIndex,
-            uptime: this.isRunning ? performance.now() - this.lastExecutionTime : 0,
-            performanceMode: this.performanceMode
+            uptime: this.isRunning ? performance.now() - this.lastExecutionTime : 0
         };
     }
 }
@@ -127,7 +142,7 @@ const SchedulerInstance = new BackgroundScheduler();
  * Worker API - Optimized Multi-threaded Communication
  */
 self.onmessage = function (e) {
-    const { action, index, mode } = e.data;
+    const { action, index } = e.data;
 
     switch (action) {
         case 'start':
@@ -142,10 +157,6 @@ self.onmessage = function (e) {
             if (index !== undefined) {
                 SchedulerInstance.currentIndex = index % SchedulerInstance.melody.length;
             }
-            break;
-
-        case 'set_performance_mode':
-            SchedulerInstance.setPerformanceMode(mode || 'balanced');
             break;
 
         case 'get_status':

@@ -5,6 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bounty Pirates - Admin Command</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function () {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -141,6 +164,15 @@
                     <span class="text-xs font-mono text-green-400">ONLINE</span>
                 </div>
 
+                <button onclick="openGoogleSheet()"
+                    class="p-2 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 rounded-lg transition-all border border-amber-500/30"
+                    title="Open Google Sheet">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+                    </svg>
+                </button>
+
                 <button onclick="refreshData()"
                     class="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-all border border-blue-500/30">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,11 +219,7 @@
                 </button>
                 <button onclick="setTab('l3')" id="nav-l3"
                     class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
-                    <span class="text-lg">🗺️</span> Level 3 (Entry)
-                </button>
-                <button onclick="setTab('login')" id="nav-login"
-                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
-                    <span class="text-lg">🔑</span> Login Entry
+                    <span class="text-lg">🗺️</span> Level 3 (Mapping)
                 </button>
                 <button onclick="setTab('roster')" id="nav-roster"
                     class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
@@ -201,7 +229,21 @@
 
             <!-- Actions -->
             <div class="glass-panel p-4 rounded-xl space-y-2">
-                <h3 class="text-xs text-slate-500 font-bold uppercase mb-2">Data Controls</h3>
+                <h3 class="text-xs text-slate-500 font-bold uppercase mb-2">Cloud Backup</h3>
+                <button onclick="syncToSheets()" id="syncBtn"
+                    class="w-full py-2 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 rounded text-xs font-mono text-green-400 transition-all flex items-center justify-center gap-2">
+                    <span id="syncIcon">☁️</span> SYNC TO SHEETS
+                </button>
+                <button onclick="pullFromSheets()" id="pullBtn"
+                    class="w-full py-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 rounded text-xs font-mono text-blue-400 transition-all flex items-center justify-center gap-2">
+                    <span id="pullIcon">🔄</span> PULL FROM CLOUD
+                </button>
+                <a href="https://docs.google.com/spreadsheets/d/17V6tx_JYPBQiQcsYWINs5cNtHd1PUgV9WnG4oHiLDCc/edit"
+                    target="_blank"
+                    class="w-full py-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 rounded text-xs font-mono text-blue-400 transition-all flex items-center justify-center gap-2">
+                    <span>↗️</span> OPEN GOOGLE SHEET
+                </a>
+                <h3 class="text-xs text-slate-500 font-bold uppercase mb-2 mt-4">Data Controls</h3>
                 <button onclick="exportLogs('all')"
                     class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs font-mono text-slate-300 transition-all">EXPORT
                     CSV</button>
@@ -241,6 +283,7 @@
                     class="px-4 py-2 bg-slate-950/80 border-t border-slate-800 text-[10px] text-slate-600 font-mono flex justify-between">
                     <span>STATUS: MONITORING</span>
                     <span id="lastUpdated">-</span>
+                    <span class="ml-4 text-slate-700">ID: ...WqF9t</span>
                 </div>
             </div>
         </div>
@@ -255,14 +298,30 @@
             MANUAL: 'pirateManualData'
         };
 
+        // Utility: Safe HTML Escaping
+        function escapeHTML(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         let state = {
             crews: [],
             logs: [],
             manual: {},   // { crewId: { login: bool, l2: {complete: bool, fails: int}, l3: int } }
             l1Data: {},   // { crewId: timestamp }
+            l3Sessions: {}, // { crewId: { avgScore, totalMarks, scanCount, ... } }
             leaderboard: [],
             currentTab: 'leaderboard'
         };
+
+        // Helper: Convert "HH:MM" to minutes from midnight
+        function timeToMinutes(ts) {
+            if (!ts || typeof ts !== 'string' || !ts.includes(':')) return 9999;
+            const [h, m] = ts.split(':').map(Number);
+            return (h * 60) + m;
+        }
 
         // --- INIT ---
         window.onload = async () => {
@@ -284,17 +343,16 @@
             // Update Header Title
             const titles = {
                 'leaderboard': 'LEADERBOARD RANKINGS',
-                'l1': 'LEVEL 1: MANUAL ENTRY (10 PTS)',
-                'l2': 'LEVEL 2: EDIT STATUS (AUTO + MANUAL)',
-                'l3': 'LEVEL 3: EDIT POINTS (SCANS + BONUS)',
-                'login': 'LOGIN ENTRY MANAGER',
-                'roster': 'CREW ROSTER & LOGS'
+                'l1': 'LEVEL 1: MANUAL TIMESTAMP ENTRY',
+                'l2': 'LEVEL 2: QUIZ SUBMISSION TRACKING',
+                'l3': 'LEVEL 3: MAPPING & PATH LOGS',
+                'roster': 'CREW DETAILS (SENSITIVE)'
             };
-            document.getElementById('viewTitle').innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> ${titles[tab]}`;
+            document.getElementById('viewTitle').innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> ${titles[tab] || tab.toUpperCase()}`;
 
             // Show/Hide Input Area
             const inputArea = document.getElementById('inputArea');
-            if (['login', 'l2', 'l3'].includes(tab)) {
+            if (['login', 'l1', 'l2', 'l3'].includes(tab)) {
                 inputArea.classList.remove('hidden');
                 renderInputArea(tab);
             } else {
@@ -314,21 +372,38 @@
                     <button onclick="addManualLogin()" class="bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">MARK ONLINE</button>
                     <span class="text-xs text-slate-500 ml-2">Manually logs in a team bypassing digital check.</span>
                 `;
+            } else if (tab === 'l1') {
+                container.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <input type="text" id="manualL1Id" placeholder="Crew ID" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 focus:border-amber-500 outline-none">
+                        <input type="text" id="manualL1Time" placeholder="Time (HH:MM)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 outline-none">
+                        <input type="number" id="manualL1Marks" placeholder="Bonus Pts" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-24 outline-none">
+                        <button onclick="addManualL1()" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">UPDATE L1</button>
+                    </div>
+                `;
             } else if (tab === 'l2') {
                 container.innerHTML = `
-                    <input type="text" id="manualL2Id" placeholder="Crew ID" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 focus:border-blue-500 outline-none">
-                    <select id="manualL2Status" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 outline-none">
-                        <option value="complete">Mark Complete</option>
-                        <option value="incomplete">Mark Incomplete</option>
-                    </select>
-                    <input type="number" id="manualL2Fails" placeholder="Fails (0)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-24 outline-none">
-                    <button onclick="addManualL2()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">UPDATE</button>
+                    <div class="flex items-center gap-4">
+                        <input type="text" id="manualL2Id" placeholder="Crew ID" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 focus:border-blue-500 outline-none">
+                        <select id="manualL2Status" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 outline-none">
+                            <option value="complete">Mark Complete</option>
+                            <option value="incomplete">Mark Incomplete</option>
+                        </select>
+                        <input type="number" id="manualL2Fails" placeholder="Fails (0)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-24 outline-none">
+                        <button onclick="addManualL2()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">UPDATE L2</button>
+                    </div>
                 `;
             } else if (tab === 'l3') {
                 container.innerHTML = `
-                    <input type="text" id="manualL3Id" placeholder="Crew ID" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 focus:border-purple-500 outline-none">
-                    <input type="number" id="manualL3Points" placeholder="Bonus Points (+/-)" class="bg-black/40 border border-slate-700 rounded text-sm text-white px-3 py-2 w-32 outline-none">
-                    <button onclick="addManualL3()" class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">ADD POINTS</button>
+                    <div class="text-xs text-slate-400 font-mono">LEVEL 3 ROSTER LOG</div>
+                    <div class="text-xs text-slate-500 space-y-2">
+                        <div><strong>CREW ID:</strong> Unique crew identifier</div>
+                        <div><strong>CREW NAME:</strong> Crew name from crew.json</div>
+                        <div><strong>SCAN PATH:</strong> Full sequence of QR nodes scanned (A→B→C...)</div>
+                        <div><strong>LAST SCAN NODE:</strong> Most recent QR node scanned</div>
+                        <div><strong>MARKS:</strong> Weighted sum of path edges (Nodes traversal weights)</div>
+                    </div>
+                    <button onclick="refreshData()" class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold px-4 py-2 rounded transition-all">REFRESH L3 DATA</button>
                 `;
             }
         }
@@ -340,15 +415,77 @@
             } catch (e) { console.error("Crew fetch failed", e); }
         }
 
-        function refreshData() {
-            // Load Local Data
-            state.logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
-            state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
+        async function refreshData() {
+            try {
+                // 🌐 FETCH FROM GOOGLE SHEET (Player → Sheet → Admin)
+                const sheetUrl = 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec';
+                const response = await fetch(sheetUrl);
+                const cloudData = await response.json();
+
+                // Map Google Sheet data to state
+                if (cloudData && cloudData.logs) {
+                    state.logs = cloudData.logs.map(log => ({
+                        crewId: log.Category,
+                        type: log.Type,
+                        timestamp: log.Timestamp,
+                        action: log.Raw ? (log.Raw.includes('SUCCESS') ? 'SUCCESS' : 'FAILURE') : 'UNKNOWN'
+                    }));
+                }
+
+                if (cloudData && cloudData.leaderboard) {
+                    // Parse leaderboard data from sheet
+                    cloudData.leaderboard.forEach(row => {
+                        const crewId = row.CrewID;
+                        if (row.Score_L3 && row.Score_L3 !== '-') {
+                            // Add to L3 sessions
+                            if (!state.l3Sessions) state.l3Sessions = {};
+                            state.l3Sessions[crewId] = {
+                                crewId: crewId,
+                                totalMarks: parseFloat(row.Score_L3) || 0
+                            };
+                        }
+                    });
+                }
+
+                console.log("✅ Synced from Google Sheet:", cloudData);
+            } catch (error) {
+                console.warn("⚠️ Google Sheet sync failed, falling back to localStorage:", error);
+
+                // Fallback to localStorage if sheet is unavailable
+                state.logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
+                state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
+                state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
+
+                state.l3Sessions = {};
+                try {
+                    const l3All = JSON.parse(localStorage.getItem('level3_sessions') || '[]');
+                    l3All.forEach(session => {
+                        state.l3Sessions[session.crewId] = session;
+                    });
+                } catch (e) {
+                    console.warn("Failed to load L3 sessions:", e);
+                }
+            }
+
+            // Ensure L3Sessions exists
+            if (!state.l3Sessions) state.l3Sessions = {};
+
+            // Load manual overrides from localStorage (Admin-only edits)
             state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
+            state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
 
             calculateScores();
             updateStats();
-            renderCurrentView();
+
+            // Prevent DOM wipe if user is typing
+            const active = document.activeElement;
+            const isEditing = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT');
+
+            if (!isEditing) {
+                renderCurrentView();
+            } else {
+                console.log("Skipping render - User is editing");
+            }
 
             document.getElementById('lastUpdated').innerText = 'UPDATED: ' + new Date().toLocaleTimeString();
         }
@@ -365,43 +502,118 @@
 
                 // L1
                 const l1Ts = state.l1Data[id];
-                const l1Score = l1Ts ? 10 : 0;
+                // const l1Score = l1Ts ? 10 : 0; // Old L1 scoring
 
                 // L2
                 const l2Logs = state.logs.filter(l => l.crewId === id && l.type === 'VERIFY');
-                const autoSuccess = l2Logs.some(l => l.action === 'SUCCESS');
+                const successLog = l2Logs.find(l => l.action === 'SUCCESS');
+                const autoSuccess = !!successLog;
                 const autoFails = l2Logs.filter(l => l.action === 'FAILURE').length;
 
+                // Manual Overrides
+                const manualL2Data = mData.l2 || {};
+                const manualTimestamp = manualL2Data.timestamp;
+                const manualFails = manualL2Data.fails;
+
+                // Determine Success & Time
                 let l2Success = autoSuccess;
-                if (mData.l2 && typeof mData.l2.complete === 'boolean') l2Success = mData.l2.complete;
+                let l2time = '-';
 
-                let l2Fails = autoFails;
-                if (mData.l2 && typeof mData.l2.fails === 'number') l2Fails = mData.l2.fails;
-
-                let l2Score = 0;
-                if (l2Success) {
-                    l2Score = 10 - (l2Fails * 2);
-                    if (l2Score < 0) l2Score = 0;
+                if (manualTimestamp) {
+                    l2Success = true;
+                    l2time = manualTimestamp;
+                } else if (successLog) {
+                    l2time = new Date(successLog.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
                 }
 
-                // L3
-                const l3Logs = state.logs.filter(l => l.crewId === id && l.type === 'LOCATION');
-                const autoL3 = l3Logs.reduce((sum, l) => sum + (parseInt(l.points) || 0), 0);
+                // Determine Fails
+                let l2Fails = autoFails;
+                if (typeof manualFails === 'number') {
+                    l2Fails = manualFails;
+                }
+
+                // Calculate Score
+                // let l2Score = 0; // Old L2 scoring
+                // if (l2Success) {
+                //     l2Score = 10 - (l2Fails * 2);
+                //     if (l2Score < 0) l2Score = 0;
+                // }
+
+                // L3: Session + Log-based Reconstruction
+                const session = state.l3Sessions[id] || {};
+                let l3TotalWeight = parseInt(session.totalMarks) || 0;
+                let pathTrace = session.pathTrace || '-';
+                let lastScanTime = session.lastScanTime || 0;
+
+                // Reconstruct from logs if session is incomplete/missing
+                const l3Logs = state.logs
+                    .filter(l => l.crewId === id && (l.type === 'LEVEL3_SCAN' || l.type === 'LOCATION'))
+                    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                if (l3Logs.length > 0) {
+                    const logMarks = l3Logs.reduce((sum, l) => sum + (parseInt(l.mark || l.points) || 0), 0);
+                    // Use whichever is higher/present
+                    l3TotalWeight = Math.max(l3TotalWeight, logMarks);
+
+                    if (pathTrace === '-') {
+                        const pathNodes = [];
+                        l3Logs.forEach(l => {
+                            if (l.from && !pathNodes.includes(l.from)) pathNodes.push(l.from);
+                            if (l.to && !pathNodes.includes(l.to)) pathNodes.push(l.to);
+                        });
+                        pathTrace = pathNodes.join('->') || '-';
+                    }
+                    if (!lastScanTime) {
+                        lastScanTime = new Date(l3Logs[l3Logs.length - 1].timestamp).getTime();
+                    }
+                }
+
+                // Final Score = Sum + Manual Bonus
                 const manualL3 = parseInt(mData.l3) || 0;
-                const l3Score = autoL3 + manualL3;
+                // const l3Score = l3TotalWeight + manualL3; // Old L3 scoring
+
+                // --- NEW PERFORMANCE SCORING ---
+                // Base points for completion, adjusted by efficiency
+
+                // L1: 100 points base, minus 0.1 per minute past 09:00
+                let l1Score = 0;
+                if (l1Ts) {
+                    const mins = timeToMinutes(l1Ts);
+                    const penalty = Math.max(0, (mins - 540) * 0.1); // 540 = 09:00
+                    l1Score = Math.max(1, 100 - penalty);
+                }
+
+                // L2: 200 points base, minus 0.2 per minute past 09:00, minus 5 per fail
+                let l2Score = 0;
+                if (l2Success) {
+                    const mins = timeToMinutes(l2time);
+                    const timePenalty = Math.max(0, (mins - 540) * 0.2);
+                    const failPenalty = l2Fails * 5;
+                    l2Score = Math.max(5, 200 - timePenalty - failPenalty);
+                }
+
+                // L3: 500 points base, minus the marks sum (Lower is better)
+                let l3Score = 0;
+                if (l3TotalWeight > 0 || l3Logs.length > 0) {
+                    l3Score = Math.max(10, 500 - l3TotalWeight);
+                }
 
                 return {
                     ...crew,
                     isLoggedIn,
                     l1Timestamp: l1Ts,
-                    l1Score,
+                    l1Score: Math.round(l1Score * 10) / 10,
                     l2Success,
                     l2Fails,
-                    l2Score,
-                    l3Score,
-                    autoL3,
+                    l2Score: Math.round(l2Score * 10) / 10,
+                    l3Score: Math.round(l3Score * 10) / 10,
+                    l3ScanCount: session.scanCount || l3Logs.length,
+                    l3TotalWeight,
                     manualL3,
-                    totalScore: l1Score + l2Score + l3Score
+                    lastScanTime,
+                    pathTrace,
+                    l2CompletionTime: l2time,
+                    totalScore: Math.round((l1Score + l2Score + l3Score) * 10) / 10
                 };
             }).sort((a, b) => b.totalScore - a.totalScore);
         }
@@ -432,17 +644,28 @@
                 );
             }
 
-            // 3. Tab-Specific Filters (Remove Predefined Rows)
+            // 3. Tab-Specific Filters & Sorting
             if (tab === 'l1') {
-                // LEVEL 1: SHOW ALL (Predefined Rows)
+                // LEVEL 1: SHOW ALL + SORT BY TIME ASCENDING
+                data.sort((a, b) => {
+                    // If both have timestamps, compare strings (HH:MM format works for sorting if 24h, 
+                    // but input type="time" stores 24h format e.g. "13:15", so string comparison is valid)
+                    if (a.l1Timestamp && b.l1Timestamp) {
+                        return a.l1Timestamp.localeCompare(b.l1Timestamp);
+                    }
+                    // If only 'a' has time, it comes first (-1)
+                    if (a.l1Timestamp) return -1;
+                    // If only 'b' has time, it comes first (1)
+                    if (b.l1Timestamp) return 1;
+                    // If neither, keep original order (or sort by ID reliably)
+                    return a.crewid.localeCompare(b.crewid);
+                });
             }
             else if (tab === 'l2') {
-                // Show if they have ANY activity (Auto success OR Manual entry)
-                data = data.filter(c => c.l2Success || state.manual[c.crewid]?.l2);
+                // LEVEL 2: SHOW ALL
             }
             else if (tab === 'l3') {
-                // Show if they have ANY points (Auto points OR Manual bonus)
-                data = data.filter(c => c.l3Score > 0 || state.manual[c.crewid]?.l3);
+                // LEVEL 3: SHOW ALL
             }
             else if (tab === 'login') {
                 // Show only if logged in
@@ -476,8 +699,12 @@
             // RENDER LOGIC
             let html = '';
 
+            // Wrapper start for horizontal scroll on mobile
+            const wrapperStart = '<div style="min-width: 900px;">'; // Force min width for tables
+            const wrapperEnd = '</div>';
+
             if (tab === 'leaderboard') {
-                html = header('0.5fr 2fr 1fr 1fr 1fr 1fr', '#', 'CREW', 'L1', 'L2', 'L3', 'TOTAL');
+                html = wrapperStart + header('0.5fr 2fr 1fr 1fr 1fr 1fr', '#', 'CREW', 'L1', 'L2', 'L3', 'TOTAL');
                 html += '<div class="divide-y divide-slate-800">';
                 html += data.map((d, i) => row('0.5fr 2fr 1fr 1fr 1fr 1fr', `
                     <div class="font-mono text-slate-500">#${i + 1}</div>
@@ -493,129 +720,379 @@
                     <div class="font-mono text-blue-400">${d.l3Score}</div>
                     <div class="font-mono font-bold text-amber-400 text-lg">${d.totalScore}</div>
                 `)).join('');
-                html += '</div>';
-
-            } else if (state.currentTab === 'l1') {
-                html = header('1fr 2fr 2fr 1fr', 'ID', 'CREW', 'COMPLETION TIME', 'ACTION');
-                html += data.map(d => row('1fr 2fr 2fr 1fr', `
-                    <div class="font-mono text-blue-400">${d.crewid}</div>
-                    <div class="text-white">${d.crewname}</div>
-                    <input type="datetime-local" id="ts_${d.crewid}" value="${d.l1Timestamp || ''}" class="bg-slate-900 border border-slate-700 rounded text-xs px-2 py-1 text-white w-full">
-                    <button onclick="saveL1('${d.crewid}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded font-bold transition-all">SAVE</button>
-                `)).join('');
-
-            } else if (state.currentTab === 'l2') {
-                html = header('1fr 2fr 1fr 1fr 1fr', 'CREW', 'STATUS', 'FAILS', 'SCORE', 'REMOVE');
-                html += data.map(d => {
-                    const hasManual = state.manual[d.crewid]?.l2;
-                    return row('1fr 2fr 1fr 1fr 1fr', `
-                    <div>
-                        <div class="text-white font-bold">${d.crewid}</div>
-                        <div class="text-[10px] text-slate-500">${d.crewname}</div>
-                    </div>
-                    <div>
-                        <span class="text-xs ${d.l2Success ? 'text-green-400' : 'text-slate-500'}">${d.l2Success ? 'COMPLETED' : 'PENDING'}</span>
-                        ${hasManual ? '<span class="text-[9px] text-blue-400 ml-1">(MANUAL)</span>' : ''}
-                    </div>
-                    <div class="font-mono text-slate-300">
-                        ${d.l2Fails}
-                    </div>
-                    <div class="font-mono text-amber-400">${d.l2Score}</div>
-                    ${hasManual ? `<button onclick="clearL2('${d.crewid}')" class="text-red-500 hover:text-red-400 text-xs underline">Reset</button>` : '<span>-</span>'}
-                `)
-                }).join('');
-
-            } else if (state.currentTab === 'l3') {
-                html = header('1fr 1fr 1fr 1fr 1fr', 'CREW', 'AUTO SCAN', 'MANUAL BONUS', 'TOTAL', 'REMOVE');
-                html += data.map(d => {
-                    const hasManual = state.manual[d.crewid]?.l3 !== undefined;
-                    return row('1fr 1fr 1fr 1fr 1fr', `
-                    <div>
-                        <div class="text-white font-bold">${d.crewid}</div>
-                        <div class="text-[10px] text-slate-500">${d.crewname}</div>
-                    </div>
-                    <div class="font-mono text-slate-400">${d.autoL3}</div>
-                    <div class="font-mono ${d.manualL3 > 0 ? 'text-green-400' : 'text-slate-500'}">${d.manualL3 > 0 ? '+' : ''}${d.manualL3}</div>
-                    <div class="font-mono text-green-400 font-bold">${d.l3Score}</div>
-                    ${hasManual ? `<button onclick="clearL3('${d.crewid}')" class="text-red-500 hover:text-red-400 text-xs underline">Reset</button>` : '<span>-</span>'}
-                `)
-                }).join('');
+                html += '</div>' + wrapperEnd;
 
             } else if (state.currentTab === 'login') {
-                html = header('1fr 2fr 1fr 1fr', 'CREW', 'CURRENT STATUS', 'SOURCE', 'ACTION');
+                // LEVEL 0: TEAM STATUS
+                html = wrapperStart + header('1fr 2fr 1fr', 'TEAM ID', 'TEAM NAME', 'STATUS');
                 html += data.map(d => {
-                    const status = d.isLoggedIn ? '<span class="text-green-400 font-bold">ONLINE</span>' : '<span class="text-slate-600">OFFLINE</span>';
-                    const source = state.manual[d.crewid]?.login ? 'MANUAL OVERRIDE' : (d.isLoggedIn ? 'SYSTEM LOG' : '-');
-                    const hasManual = state.manual[d.crewid]?.login;
+                    const status = d.isLoggedIn
+                        ? '<span class="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold border border-green-500/30">ONLINE</span>'
+                        : '<span class="px-2 py-1 rounded bg-slate-800 text-slate-500 text-xs font-bold border border-slate-700">OFFLINE</span>';
 
-                    return row('1fr 2fr 1fr 1fr', `
-                    <div>
-                        <div class="text-white font-bold">${d.crewid}</div>
-                         <div class="text-[10px] text-slate-500">${d.crewname}</div>
-                    </div>
-                    <div>${status}</div>
-                    <div class="text-[10px] font-mono text-slate-500">${source}</div>
-                    ${hasManual ? `<button onclick="toggleLogin('${d.crewid}', false)" class="text-red-400 hover:text-red-300 text-xs font-bold underline">REMOVE OVERRIDE</button>` : '-'}
-                `)
-                }).join('');
+                    return row('1fr 2fr 1fr', `
+                        <div class="font-mono text-blue-400 font-bold">${d.crewid}</div>
+                        <div class="text-white">${d.crewname}</div>
+                        <div>${status}</div>
+                    `);
+                }).join('') + wrapperEnd;
 
-            } else if (state.currentTab === 'roster') {
-                html = `<div class="p-4 space-y-6">`;
+            } else if (state.currentTab === 'l1') {
+                // LEVEL 1: MANUAL TIMESTAMP ENTRY + MARKS
+                html = wrapperStart + header('1fr 2fr 1fr 2fr 1fr 1fr', 'TEAM ID', 'TEAM NAME', 'STATUS', 'TIMESTAMP', 'MARKS', 'ACTION');
+                html += data.map(d => {
+                    const status = d.isLoggedIn
+                        ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold border border-green-500/30">ONLINE</span>'
+                        : '<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-500 text-[10px] font-bold border border-slate-700">OFFLINE</span>';
 
-                // 1. FULL CREW ROSTER
-                html += `
-                    <div>
-                        <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 px-2">FULL CREW ROSTER (${state.crews.length})</h3>
-                        <div class="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
-                            <div class="grid grid-cols-4 gap-4 px-4 py-2 bg-slate-800 text-xs font-bold text-slate-400 uppercase font-mono">
-                                <div>ID</div>
-                                <div>Crew Name</div>
-                                <div>Captain</div>
-                                <div>Password</div>
-                            </div>
-                            <div class="max-h-64 overflow-y-auto divide-y divide-slate-800">
-                                ${state.crews.map(c => `
-                                    <div class="grid grid-cols-4 gap-4 px-4 py-2 text-xs hover:bg-slate-800/50">
-                                        <div class="font-mono text-blue-400">${c.crewid}</div>
-                                        <div class="text-white">${c.crewname}</div>
-                                        <div class="text-slate-400">${c.captain}</div>
-                                        <div class="font-mono text-red-400">${c.password}</div>
+                    return row('1fr 2fr 1fr 2fr 1fr 1fr', `
+                        <div class="font-mono text-blue-400">${d.crewid}</div>
+                        <div class="text-white flex flex-col">
+                            <span>${d.crewname}</span>
+                        </div>
+                        <div>${status}</div>
+                        <input type="text" id="ts_${d.crewid}" value="${d.l1Timestamp || ''}" placeholder="HH:MM" onblur="formatTimeInput(this)" class="bg-slate-900 border border-slate-700 rounded text-xs px-2 py-1 text-white w-full font-mono text-center tracking-wider">
+                        <div class="font-mono font-bold ${d.l1Score > 0 ? 'text-green-400' : 'text-slate-600'}">
+                            ${d.l1Score > 0 ? '10' : '0'}
+                        </div>
+                        <button onclick="saveL1('${d.crewid}')" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-3 py-1.5 rounded font-bold transition-all uppercase">SAVE</button>
+                    `);
+                }).join('') + wrapperEnd;
+
+
+            } else if (state.currentTab === 'l2') {
+                // LEVEL 2: QUIZ SUBMISSION TRACKING (Automatic)
+                html = wrapperStart + header('1fr 2fr 1fr 2fr 1fr 1fr', 'CREW ID', 'CREW NAME', 'STATUS', 'COMPLETION TIME (AUTO)', 'FAILURES', 'SCORE');
+                html += data.map(d => {
+                    const timestamp = d.l2CompletionTime !== '-' ? d.l2CompletionTime : '-';
+                    const status = d.isLoggedIn
+                        ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold border border-green-500/30">ONLINE</span>'
+                        : '<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-500 text-[10px] font-bold border border-slate-700">OFFLINE</span>';
+
+                    return row('1fr 2fr 1fr 2fr 1fr 1fr', `
+                        <div class="font-mono text-blue-400">${d.crewid}</div>
+                        <div class="text-white flex flex-col">
+                            <span>${d.crewname}</span>
+                        </div>
+                        <div>${status}</div>
+                        <div class="font-mono text-xs ${d.l2Success ? 'text-green-400' : 'text-slate-500'}">
+                            ${timestamp}
+                        </div>
+                        <div class="font-mono text-slate-300 text-center">${d.l2Fails}</div>
+                        <div class="font-mono font-bold text-amber-400 text-lg text-center">${d.l2Score}</div>
+                    `);
+                }).join('') + wrapperEnd;
+
+            } else if (state.currentTab === 'l3') {
+                // LEVEL 3: QR NODE SCANNING - ROSTER LOG
+                html = wrapperStart + header('0.8fr 1fr 1.5fr 2fr 0.8fr 1.2fr 1fr', 'STATUS', 'CREW ID', 'CREW NAME', 'PATH', 'LAST SCAN', 'TIMESTAMP', 'MARKS');
+                html += data.map(d => {
+                    const pathTrace = d.pathTrace || '-';
+                    const marks = d.l3TotalWeight || 0;
+                    const timestamp = d.lastScanTime ? new Date(d.lastScanTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+
+                    let lastNode = '-';
+                    if (pathTrace && pathTrace !== '-') {
+                        const nodes = pathTrace.split('->').filter(n => n.trim());
+                        lastNode = nodes.length > 0 ? nodes[nodes.length - 1].trim() : '-';
+                    }
+
+                    const statusText = d.isLoggedIn ? 'ONLINE' : 'OFFLINE';
+                    const statusClass = d.isLoggedIn
+                        ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                        : 'bg-red-500/20 text-red-400 border-red-500/30';
+
+                    return row('0.8fr 1fr 1.5fr 2fr 0.8fr 1.2fr 1fr', `
+                        <div><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusClass}">${statusText}</span></div>
+                        <div class="font-mono text-blue-400 font-bold">${d.crewid}</div>
+                        <div class="text-white font-semibold">${d.crewname}</div>
+                        <div class="font-mono text-slate-300 text-[10px] break-all leading-tight">${escapeHTML(pathTrace)}</div>
+                        <div class="font-mono text-cyan-400 font-bold text-sm text-center">${escapeHTML(lastNode)}</div>
+                        <div class="font-mono text-slate-400 text-xs text-center">${timestamp}</div>
+                        <div class="font-mono font-bold text-green-400 text-lg text-center">${marks}</div>
+                    `);
+                }).join('') + wrapperEnd;
+
+            } else if (tab === 'timer') {
+                const timerState = JSON.parse(localStorage.getItem('pirate_timer_state') || '{}');
+                const lastUpdated = timerState.timestamp ? new Date(timerState.timestamp).toLocaleTimeString() : 'NEVER';
+
+                html = `
+                    <div class="p-8 max-w-4xl mx-auto space-y-8 fade-in">
+                        <div class="glass-panel p-6 rounded-2xl border-l-4 border-blue-500 bg-blue-500/5">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 class="text-lg font-bold text-white">Live Monitor</h3>
+                                    <p class="text-xs text-slate-500">Real-time status of the global timer node</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-[10px] text-slate-500 uppercase font-mono">Status</div>
+                                    <div class="text-sm font-bold ${timerState.isRunning ? 'text-green-400' : 'text-amber-400'} font-mono">
+                                        ${timerState.isRunning ? '● ACTIVE' : '○ PAUSED/IDLE'}
                                     </div>
-                                `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-center gap-6 py-4 bg-black/40 rounded-xl border border-slate-800">
+                                <div class="text-6xl font-mono font-bold text-white tracking-tighter">
+                                    ${formatSeconds(timerState.remaining || 0)}
+                                </div>
+                            </div>
+                            <div class="mt-4 text-[10px] text-slate-600 font-mono text-center">
+                                LAST SIGNAL: ${lastUpdated}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="glass-panel p-6 rounded-2xl border-t-2 border-slate-700">
+                                <h4 class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Initialization</h4>
+                                <div class="flex gap-2 mb-4">
+                                    <input type="number" id="remote-m" placeholder="Min" class="w-full bg-black/40 border border-slate-800 rounded px-3 py-2 text-white font-mono">
+                                    <input type="number" id="remote-s" placeholder="Sec" class="w-full bg-black/40 border border-slate-800 rounded px-3 py-2 text-white font-mono">
+                                </div>
+                                <button onclick="sendRemoteCommand('INIT', { m: document.getElementById('remote-m').value, s: document.getElementById('remote-s').value })" 
+                                    class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all text-sm uppercase tracking-wider shadow-lg shadow-blue-900/20">
+                                    SET & BROADCAST
+                                </button>
+                            </div>
+
+                            <div class="glass-panel p-6 rounded-2xl border-t-2 border-slate-700">
+                                <h4 class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Playback Controls</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button onclick="sendRemoteCommand('TOGGLE')" class="py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition-all text-xs uppercase">
+                                        START/PAUSE
+                                    </button>
+                                    <button onclick="sendRemoteCommand('RESET')" class="py-3 bg-red-900/40 border border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white font-bold rounded-lg transition-all text-xs uppercase">
+                                        HARD RESET
+                                    </button>
+                                </div>
+                                <div class="mt-4 flex gap-2">
+                                    <button onclick="sendRemoteCommand('ADJUST', { delta: 30 })" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-green-400 text-[10px] font-bold rounded border border-slate-700 transition-all">+30s</button>
+                                    <button onclick="sendRemoteCommand('ADJUST', { delta: -30 })" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-red-400 text-[10px] font-bold rounded border border-slate-700 transition-all">-30s</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
-
-                // 2. SYSTEM LOGS
-                html += `<div><h3 class="text-xs font-bold text-slate-500 uppercase mb-3 px-2">RECENT SYSTEM LOGS</h3>`;
-                html += `<div class="font-mono text-[10px] space-y-1 bg-slate-900/50 p-2 rounded border border-slate-800">`;
-                const logs = [...state.logs].reverse().slice(0, 100);
-
-                if (logs.length === 0) html += `<div class="text-slate-600 italic px-2">No logs found.</div>`;
-
-                logs.forEach(l => {
-                    let color = 'text-slate-400';
-                    if (l.type === 'ERROR') color = 'text-red-400';
-                    if (l.type === 'LOGIN') color = 'text-green-400';
-                    if (l.action === 'SUCCESS') color = 'text-amber-400';
-                    const details = JSON.stringify(l).replace(/"/g, '').substring(0, 100);
-                    html += `
-                        <div class="grid grid-cols-12 gap-2 border-b border-slate-800/50 py-1 hover:bg-white/5 px-2">
-                            <div class="col-span-2 text-slate-600">${new Date(l.timestamp).toLocaleTimeString()}</div>
-                            <div class="col-span-1 text-blue-400 font-bold">${l.crewId || '-'}</div>
-                            <div class="col-span-2 ${color}">${l.type}</div>
-                            <div class="col-span-7 text-slate-500 truncate">${details}</div>
+            } else if (state.currentTab === 'roster') {
+                // ROSTER: FULL CREW DETAILS
+                html = wrapperStart + header('0.8fr 1.5fr 1.5fr 1fr 2fr', 'CREW ID', 'CREW NAME', 'CAPTAIN', 'PASSWORD', 'MEMBERS');
+                html += state.crews.map(c => {
+                    const members = Array.isArray(c.members) ? c.members.join(', ') : c.members;
+                    return row('0.8fr 1.5fr 1.5fr 1fr 2fr', `
+                        <div class="font-mono text-blue-400 font-bold">${c.crewid}</div>
+                        <div class="text-white">${c.crewname}</div>
+                        <div class="text-amber-400 text-xs">${c.captain}</div>
+                        <div class="font-mono text-red-400 font-bold tracking-wider">${c.password}</div>
+                        <div class="text-slate-400 text-xs break-words">${members}</div>
+                    `);
+                }).join('') + wrapperEnd;
+            } else if (state.currentTab === 'settings') {
+                const sheetUrl = localStorage.getItem('google_sheet_url') || 'https://script.google.com/macros/s/AKfycbyRzmRf3n3fb10FIeE3rkE-QsQztGJYjxjg7I-xrHTKQ97c4-YFeo24OHEm4yyb0pAS/exec';
+                html = `
+                    <div class="p-8 max-w-2xl mx-auto space-y-8 fade-in">
+                        <div class="glass-panel p-6 rounded-2xl border-t-2 border-green-500">
+                            <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                <span class="text-xl">📊</span> Google Sheets Database (Backup)
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+                                Link your admin panel to a Google Sheet via Apps Script. This maintains a three-tier clean real-time backup.
+                            </p>
+                            
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Apps Script Deployment URL</label>
+                            <div class="flex gap-2 mb-4">
+                                <input type="text" id="sheetUrlInput" value="${sheetUrl}" 
+                                    placeholder="https://script.google.com/macros/s/.../exec"
+                                    class="flex-1 bg-black/40 border border-slate-700 rounded-lg text-xs text-white px-4 py-3 focus:border-green-500 outline-none transition-all">
+                                <button onclick="saveSheetSettings()" 
+                                    class="px-6 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-green-900/20">
+                                    SAVE
+                                </button>
+                            </div>
+                            
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Access Google Sheet</label>
+                            <button onclick="window.open('https://docs.google.com/spreadsheets/d/17V6tx_JYPBQiQcsYWINs5cNtHd1PUgV9WnG4oHiLDCc/edit', '_blank')" 
+                                class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition-all text-sm uppercase tracking-wider shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2">
+                                <span>📊</span> OPEN GOOGLE SHEET
+                            </button>
                         </div>
-                    `;
-                });
-                html += `</div></div></div>`;
+
+                        <div class="glass-panel p-6 rounded-2xl border-t-2 border-blue-500">
+                            <h3 class="text-lg font-bold text-white mb-4">Manual Control Center</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button onclick="syncToSheets()" class="p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-slate-800 transition-all text-left">
+                                    <div class="text-xs font-bold text-blue-400 uppercase mb-1">Global Sync</div>
+                                    <div class="text-[10px] text-slate-500">Force immediate sync of all 3 tiers to cloud.</div>
+                                </button>
+                                <button onclick="resetFullGame()" class="p-4 bg-red-900/20 border border-red-500/50 rounded-xl hover:bg-red-600/40 transition-all text-left group">
+                                    <div class="text-xs font-bold text-red-500 group-hover:text-white uppercase mb-1">🔥 GLOBAL ZERO RESET</div>
+                                    <div class="text-[10px] text-red-400/70 group-hover:text-red-200">WIPE EVERYTHING. Cloud + Local. Irreversible.</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
 
             container.innerHTML = html;
         }
 
-        // --- INPUT ACTIONS ---
+        function saveSheetSettings() {
+            const url = document.getElementById('sheetUrlInput').value.trim();
+            localStorage.setItem('google_sheet_url', url);
+            alert("Settings Saved!");
+            refreshData();
+        }
+
+        function openGoogleSheet() {
+            // Extract sheet ID from Google Apps Script URL
+            const endpoint = localStorage.getItem('google_sheet_url') || 'https://script.google.com/macros/s/AKfycbwrzsTKkmnabHNbEZTZrNHF84JsbAQtm-9OtL8IkmMgDbkYoOmPlfrvP74G3SusodU_/exec';
+
+            // Prompt user to enter Google Sheet ID or open in new window
+            const sheetId = prompt("Enter your Google Sheet ID (found in the sheet URL after '/d/')\nOr leave blank to visit Google Sheets:", "");
+            if (sheetId) {
+                window.open(`https://docs.google.com/spreadsheets/d/${sheetId}/`, '_blank');
+            } else {
+                window.open('https://docs.google.com/spreadsheets/', '_blank');
+            }
+        }
+
+        async function pullFromSheets() {
+            const endpoint = localStorage.getItem('google_sheet_url');
+            if (!endpoint) return alert("Configure Endpoint first in Settings!");
+
+            const btn = document.getElementById('pullBtn');
+            const icon = document.getElementById('pullIcon');
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('animate-spin');
+
+            try {
+                const response = await fetch(endpoint);
+                const cloudData = await response.json();
+
+                if (cloudData.logs) {
+                    const localLogs = state.logs;
+                    // Merge logs, avoiding duplicates if possible (simplistic timestamp + type match)
+                    const mergedLogs = [...localLogs];
+                    cloudData.logs.forEach(cl => {
+                        const raw = JSON.parse(cl.Raw || '{}');
+                        if (!mergedLogs.find(ml => ml.timestamp === raw.timestamp && ml.type === raw.type)) {
+                            mergedLogs.push(raw);
+                        }
+                    });
+                    state.logs = mergedLogs.sort((a, b) => b.timestamp - a.timestamp);
+                    localStorage.setItem(KEYS.LOGS, JSON.stringify(state.logs));
+                }
+
+                if (cloudData.leaderboard) {
+                    // Update manual overrides based on cloud standing
+                    cloudData.leaderboard.forEach(c => {
+                        if (!state.manual[c.CrewID]) state.manual[c.CrewID] = {};
+                        if (c.Status === 'LEVEL_2_CERTIFIED') state.manual[c.CrewID].l2 = { complete: true, fails: 0 };
+                        if (c.Status === 'LEVEL_3_RACE') state.manual[c.CrewID].l3_started = true;
+                    });
+                    localStorage.setItem(KEYS.MANUAL, JSON.stringify(state.manual));
+                }
+
+                alert("CLOUD RECOVERY SUCCESSFUL!\nMerged logs and standings from Google Sheets.");
+                refreshData();
+            } catch (e) {
+                console.error(e);
+                alert("PULL FAILED: Check script deployment and CORS.");
+            } finally {
+                if (btn) btn.disabled = false;
+                if (icon) icon.classList.remove('animate-spin');
+            }
+        }
+
+        async function syncToSheets() {
+            const endpoint = localStorage.getItem('google_sheet_url');
+            if (!endpoint) return alert("Configure Endpoint first!");
+
+            const btn = document.getElementById('syncBtn');
+            const icon = document.getElementById('syncIcon');
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('animate-spin');
+
+            try {
+                // TIER 1: Leaderboard (Rankings)
+                const leaderboardData = state.leaderboard.map((d, i) => ({
+                    Rank: i + 1,
+                    CrewID: d.crewid,
+                    Name: d.crewname,
+                    Status: d.l3Avg > 0 ? 'LEVEL_3_RACE' : (d.l2Success ? 'LEVEL_2_CERTIFIED' : 'ACTIVE'),
+                    Score_L1: d.l1Score,
+                    Score_L2: d.l2Score,
+                    Score_L3: d.l3Avg.toFixed(2),
+                    Total_Points: d.totalScore.toFixed(2),
+                    Last_Seen: d.l1Timestamp || '-'
+                }));
+
+                // TIER 2: Path Analytics (L3 Specific)
+                const pathData = state.leaderboard.map(d => {
+                    const s = state.l3Sessions[d.crewid] || {};
+                    return {
+                        CrewID: d.crewid,
+                        Name: d.crewname,
+                        Path: s.pathTrace || '-',
+                        Scans: s.scanCount || 0,
+                        Internal_Marks: s.totalMarks || 0,
+                        Avg_Score: (d.l3Avg || 0).toFixed(2),
+                        Last_Scan: s.lastScanTime ? new Date(s.lastScanTime).toLocaleTimeString() : '-'
+                    };
+                });
+
+                // TIER 3: Raw Action Logs
+                const logData = state.logs.map(l => ({
+                    Timestamp: new Date(l.timestamp).toLocaleString(),
+                    Type: l.type,
+                    Category: l.crewId,
+                    Raw: JSON.stringify(l)
+                }));
+
+                await fetch(endpoint, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'BULK_SYNC',
+                        tier1: leaderboardData,
+                        tier2: pathData,
+                        tier3: logData,
+                        uploadedAt: new Date().toISOString()
+                    })
+                });
+
+                alert("BULK SYNC COMPLETE!\nFull database backup finished.");
+            } catch (e) {
+                console.error(e);
+                alert("SYNC FAILED!");
+            } finally {
+                if (btn) btn.disabled = false;
+                if (icon) icon.classList.remove('animate-spin');
+            }
+        }
+
+        // --- UTILS ---
+        function formatSeconds(s) {
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            return `${h > 0 ? h.toString().padStart(2, '0') + ':' : ''}${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function sendRemoteCommand(action, data = {}) {
+            const cmd = {
+                action,
+                data,
+                id: Date.now(),
+                timestamp: Date.now()
+            };
+            localStorage.setItem('pirate_timer_command', JSON.stringify(cmd));
+            setTimeout(refreshData, 100);
+        }
+
+
         function addManualLogin() {
             const id = document.getElementById('manualLoginId').value.toUpperCase();
             if (!id) return alert("Enter Crew ID");
@@ -682,17 +1159,42 @@
             saveManual();
         };
 
-        window.clearL2 = (id) => {
-            if (confirm('Remove manual override for ' + id + '?')) {
-                if (state.manual[id]) delete state.manual[id].l2;
-                saveManual();
+        window.saveL2 = (id) => {
+            const tsVal = document.getElementById(`l2_ts_${id}`).value.trim();
+            const failsVal = document.getElementById(`l2_fails_${id}`).value;
+
+            if (!state.manual[id]) state.manual[id] = {};
+
+            if (tsVal) {
+                // UPDATE
+                state.manual[id].l2 = {
+                    timestamp: tsVal,
+                    fails: parseInt(failsVal) || 0
+                };
+                alert("Level 2 Updated for " + id);
+            } else {
+                // CLEAR if empty timestamp
+                if (state.manual[id].l2) {
+                    if (confirm("Clear Level 2 data for " + id + "?")) {
+                        delete state.manual[id].l2;
+                    } else {
+                        return; // Cancelled
+                    }
+                }
             }
+            saveManual();
         };
 
         window.clearL3 = (id) => {
-            if (confirm('Remove manual bonus for ' + id + '?')) {
-                if (state.manual[id]) delete state.manual[id].l3;
-                saveManual();
+            if (confirm('Clear Level 3 session data for ' + id + '?')) {
+                try {
+                    let l3Sessions = JSON.parse(localStorage.getItem('level3_sessions') || '[]');
+                    l3Sessions = l3Sessions.filter(s => s.crewId !== id);
+                    localStorage.setItem('level3_sessions', JSON.stringify(l3Sessions));
+                    refreshData();
+                } catch (e) {
+                    console.error("Failed to clear L3 session:", e);
+                }
             }
         }
 
@@ -716,6 +1218,103 @@
                 localStorage.removeItem(KEYS.LOGS);
                 refreshData();
             }
+        };
+
+        window.resetFullGame = async () => {
+            if (confirm("🚨 DANGER: GLOBAL SERVER RESET 🚨\n\nThis will PERMANENTLY ERASE ALL GAME DATA:\n- All Player Scores & Progress\n- All Leaderboard Rankings\n- All Logs & History\n- Google Sheets Database\n\nAre you absolutely sure?")) {
+                const confirmation = prompt("Type 'DELETE' to confirm full reset:");
+                if (confirmation !== 'DELETE') return alert("Reset Cancelled.");
+
+                const endpoint = localStorage.getItem('google_sheet_url');
+                if (!endpoint) return alert("Error: No Google Sheet connected. Cannot reset server.");
+
+                // UI Feedback
+                const btn = document.querySelector('button[onclick="resetFullGame()"]');
+                if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<div class="text-xs font-bold text-white uppercase animate-pulse">Creating New Galaxy...</div>';
+                    btn.disabled = true;
+                }
+
+                try {
+                    // 1. Reset Server
+                    await fetch(endpoint, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'RESET_GAME' })
+                    });
+
+                    // 2. Clear Local Storage
+                    const sheetUrl = localStorage.getItem('google_sheet_url');
+                    localStorage.clear();
+                    localStorage.setItem('google_sheet_url', sheetUrl);
+
+                    alert("✅ UNIVERSE RESET SUCCESSFUL.\nStarting fresh instance.");
+                    window.location.reload();
+
+                } catch (e) {
+                    console.error(e);
+                    alert("FATAL ERROR: Could not reset server. Check console.");
+                    if (btn) {
+                        btn.innerHTML = "🔥 GLOBAL ZERO RESET";
+                        btn.disabled = false;
+                    }
+                }
+            }
+        };
+
+        window.clearEverything = () => {
+            if (confirm("⚠️ DANGER ZONE: This will wipe ALL local data on this device (Logs, Manual Overrides, cached Roster). \n\nIt does NOT delete data from the Google Sheet.\n\nAre you sure?")) {
+                const sheetUrl = localStorage.getItem('google_sheet_url'); // Preserve Sheet URL
+                localStorage.clear();
+                if (sheetUrl) localStorage.setItem('google_sheet_url', sheetUrl);
+                alert("System Wiped. Reloading...");
+                window.location.reload();
+            }
+        };
+
+        // --- HELPER: TIME FORMATTER ---
+        window.formatTimeInput = (input) => {
+            let val = input.value.trim();
+            if (!val) return;
+
+            // Remove all non-digits to handle 12:30, 12.30, 12 30, 1230
+            const digits = val.replace(/[^0-9]/g, '');
+            let h = 0, m = 0;
+
+            if (val.includes(':') || val.includes('.') || val.includes(' ')) {
+                // Separator logic
+                const parts = val.split(/[:. ]/);
+                h = parseInt(parts[0] || '0');
+                m = parseInt(parts[1] || '0');
+            } else if (digits.length === 4) {
+                // e.g. 1230
+                h = parseInt(digits.substring(0, 2));
+                m = parseInt(digits.substring(2, 4));
+            } else if (digits.length === 3) {
+                // e.g. 930 -> 09:30
+                h = parseInt(digits.substring(0, 1));
+                m = parseInt(digits.substring(1, 3));
+            } else if (digits.length <= 2) {
+                // e.g. 9 -> 09:00, 12 -> 12:00
+                h = parseInt(digits);
+                m = 0;
+            }
+
+            // Validate
+            if (isNaN(h) || h < 0 || h > 23) {
+                // Try visual feedback
+                input.style.borderColor = 'red';
+                return;
+            }
+            if (isNaN(m) || m < 0 || m > 59) m = 0;
+
+            // Format HH:MM
+            const hh = h.toString().padStart(2, '0');
+            const mm = m.toString().padStart(2, '0');
+            input.value = `${hh}:${mm}`;
+            input.style.borderColor = ''; // Reset
         };
 
     </script>

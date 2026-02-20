@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Loading</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,7 +51,7 @@
             position: fixed;
             inset: 0;
             z-index: -3;
-            background: #000 url('images/loading.png') no-repeat center center/cover;
+            background: #000 url('images/loading.jpeg') no-repeat center center/cover;
             filter: brightness(0.7) contrast(1.2) sepia(0.3);
             image-rendering: auto !important;
         }
@@ -113,25 +136,42 @@
             const loadingPercent = document.getElementById('loadingPercent');
             const urlParams = new URLSearchParams(window.location.search);
 
+            if (!loadingBar || !loadingPercent) {
+                console.error('Loading elements not found');
+                return;
+            }
+
             let progress = 0;
             const interval = setInterval(() => {
-                progress += Math.random() * 15; // Faster increments
+                progress += Math.random() * 25; // Smooth loading
                 if (progress >= 100) {
                     progress = 100;
                     clearInterval(interval);
+                    loadingBar.style.width = '100%';
+                    loadingPercent.textContent = '100%';
+
+                    if (window.playSound) window.playSound('success');
 
                     setTimeout(() => {
-                        // After loading, decide where to go
-                        if (urlParams.has('skipCrew')) {
-                            window.location.replace('login.html');
-                        } else {
-                            window.location.replace('displaycrew.html');
-                        }
-                    }, 250); // Reduced delay
+                        window.location.replace('displaycrew.html');
+                    }, 1000);
+                } else {
+                    const newProgress = Math.floor(progress);
+                    const prevProgress = parseInt(loadingPercent.textContent) || 0;
+                    if (newProgress !== prevProgress) {
+                        loadingBar.style.width = progress + '%';
+                        loadingPercent.textContent = newProgress + '%';
+
+                        // Play subtle loading tick
+                        if (window.playSound) window.playSound('click', { intensity: 0.2 });
+                    }
                 }
-                loadingBar.style.width = progress + '%';
-                loadingPercent.textContent = Math.floor(progress) + '%';
-            }, 50); // Half the interval time
+            }, 80);
+
+            // Cleanup on unload
+            window.addEventListener('beforeunload', () => {
+                if (interval) clearInterval(interval);
+            });
         });
     </script>
 </body>

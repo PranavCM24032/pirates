@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="view-transition" content="same-origin">
     <title>Level Up! - Bounty Hunt</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function () {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -35,12 +58,59 @@
         .background-layer {
             position: fixed;
             inset: 0;
-            background: url('images/celebration.png') no-repeat center center/cover;
+            background: url('images/celebration.jpeg') no-repeat center center/cover;
             z-index: -3;
         }
 
+        /* Responsive for 9:16 aspect ratio */
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
 
+            .level-up-text {
+                font-size: clamp(18px, 5vw, 32px);
+                margin-bottom: 30px;
+            }
 
+            .stats-box {
+                gap: 0.8rem;
+                margin-top: 0.8rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .stat-card {
+                padding: 0.5rem 0.8rem;
+            }
+
+            .stat-val {
+                font-size: clamp(0.65rem, 3.5vw, 1rem);
+            }
+
+            .btn-simple {
+                padding: 0.8rem 1.5rem;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            body {
+                padding: 18px;
+            }
+
+            .level-up-text {
+                font-size: clamp(22px, 5.5vw, 36px);
+            }
+
+            .stats-box {
+                gap: 1rem;
+            }
+        }
+
+        @media (min-width: 769px) {
+            body {
+                padding: 20px;
+            }
+        }
 
         .main-msg {
             position: relative;
@@ -172,110 +242,149 @@
         window.onload = function () {
             if (window.initGame) initGame();
 
-            // Initial burst
-            confetti({
-                particleCount: 200,
-                spread: 90,
-                origin: { y: 0.6 },
-                colors: ['#ffffff', '#ffff55', '#55ff55']
-            });
+            // Display Level 3 stats if applicable
+            if (gameState.currentLevel === 3) {
+                // Ensure the session is marked as complete
+                completeLevel3Session();
 
-            launchCelebration();
-            createStars();
-        };
+                if (gameState.level3Session) {
+                    const session = gameState.level3Session;
+                    const statsContainer = document.querySelector('.stats-box');
+                    const lastScanTime = new Date(session.lastScanTime).toLocaleTimeString('en-US', { hour12: false });
 
-        function launchCelebration() {
-            const end = Date.now() + 30 * 1000;
-            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#ffaa00'];
+                    statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <span class="stat-val">${session.scanCount}</span>
+                        <span class="stat-label">NODES SCANNED</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val">${session.totalMarks > 0 ? '+' : ''}${session.totalMarks}</span>
+                        <span class="stat-label">TOTAL MARKS</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val">${session.avgScore.toFixed(2)}</span>
+                        <span class="stat-label">AVG SCORE</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" style="font-size: 0.7rem;">${lastScanTime}</span>
+                        <span class="stat-label">LAST SCAN</span>
+                    </div>
+                `;
 
-            const interval = setInterval(function () {
-                if (Date.now() > end) return clearInterval(interval);
-
-                // Heavy Launch from bottom corners
-                confetti({
-                    particleCount: 12,
-                    angle: 65,
-                    spread: 70,
-                    origin: { x: 0, y: 1 },
-                    colors: colors
-                });
-
-                confetti({
-                    particleCount: 12,
-                    angle: 115,
-                    spread: 70,
-                    origin: { x: 1, y: 1 },
-                    colors: colors
-                });
-
-                // Periodic bursts from random sides
-                if (Math.random() > 0.7) {
-                    confetti({
-                        particleCount: 25,
-                        angle: Math.random() > 0.5 ? 45 : 135,
-                        spread: 100,
-                        origin: { x: Math.random(), y: 0.8 },
-                        colors: colors
+                    console.log("Level 3 Session Stats:", {
+                        path: session.pathTrace,
+                        scans: session.scanCount,
+                        totalMarks: session.totalMarks,
+                        avgScore: session.avgScore,
+                        timestamp: lastScanTime
                     });
                 }
-            }, 60);
 
-            // MASSIVE bursts more frequently
-            const burstInterval = setInterval(() => {
-                if (Date.now() > end) {
-                    // GRAND FINALE BURST
-                    confetti({
-                        particleCount: 400,
-                        spread: 160,
-                        origin: { y: 0.5 },
-                        colors: colors
-                    });
-                    return clearInterval(burstInterval);
-                }
-
-                const origins = [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0.5, y: 0.7 }, { x: 0.2, y: 0.4 }, { x: 0.8, y: 0.4 }];
-                const randomOrg = origins[Math.floor(Math.random() * origins.length)];
-
+                // Initial burst
                 confetti({
-                    particleCount: 80,
-                    spread: 120,
-                    origin: randomOrg,
-                    colors: colors
+                    particleCount: 200,
+                    spread: 90,
+                    origin: { y: 0.6 },
+                    colors: ['#ffffff', '#ffff55', '#55ff55']
                 });
-            }, 700);
-        }
 
-        function createStars() {
-            // HYPER DENSE STAR RAIN
-            setInterval(() => {
-                const star = document.createElement('div');
-                star.className = 'star';
-                const size = Math.random() * 6 + 2 + 'px';
-                star.style.width = size;
-                star.style.height = size;
-                star.style.left = Math.random() * 100 + 'vw';
-                star.style.top = '-10px';
-
-                // Random neon glow for some stars
-                const colors = ['#f0f', '#0ff', '#ff0', '#fff'];
-                const glowColor = colors[Math.floor(Math.random() * colors.length)];
-                star.style.boxShadow = `0 0 10px ${glowColor}`;
-
-                star.style.opacity = Math.random();
-                star.style.animationDuration = Math.random() * 1 + 1 + 's';
-                document.body.appendChild(star);
-
-                setTimeout(() => star.remove(), 2500);
-            }, 30); // ~33 stars per second!
-        }
-
-        function handleNavigate() {
-            if (window.navigateNext) {
-                window.navigateNext();
-            } else {
-                window.location.href = 'index.html';
+                launchCelebration();
+                createStars();
             }
-        }
+
+            function launchCelebration() {
+                const end = Date.now() + 30 * 1000;
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#ffaa00'];
+
+                const interval = setInterval(function () {
+                    if (Date.now() > end) return clearInterval(interval);
+
+                    // Heavy Launch from bottom corners
+                    confetti({
+                        particleCount: 12,
+                        angle: 65,
+                        spread: 70,
+                        origin: { x: 0, y: 1 },
+                        colors: colors
+                    });
+
+                    confetti({
+                        particleCount: 12,
+                        angle: 115,
+                        spread: 70,
+                        origin: { x: 1, y: 1 },
+                        colors: colors
+                    });
+
+                    // Periodic bursts from random sides
+                    if (Math.random() > 0.7) {
+                        confetti({
+                            particleCount: 25,
+                            angle: Math.random() > 0.5 ? 45 : 135,
+                            spread: 100,
+                            origin: { x: Math.random(), y: 0.8 },
+                            colors: colors
+                        });
+                    }
+                }, 60);
+
+                // MASSIVE bursts more frequently
+                const burstInterval = setInterval(() => {
+                    if (Date.now() > end) {
+                        // GRAND FINALE BURST
+                        confetti({
+                            particleCount: 400,
+                            spread: 160,
+                            origin: { y: 0.5 },
+                            colors: colors
+                        });
+                        return clearInterval(burstInterval);
+                    }
+
+                    const origins = [{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0.5, y: 0.7 }, { x: 0.2, y: 0.4 }, { x: 0.8, y: 0.4 }];
+                    const randomOrg = origins[Math.floor(Math.random() * origins.length)];
+
+                    confetti({
+                        particleCount: 80,
+                        spread: 120,
+                        origin: randomOrg,
+                        colors: colors
+                    });
+                }, 700);
+            }
+
+            function createStars() {
+                // HYPER DENSE STAR RAIN
+                setInterval(() => {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    const size = Math.random() * 6 + 2 + 'px';
+                    star.style.width = size;
+                    star.style.height = size;
+                    star.style.left = Math.random() * 100 + 'vw';
+                    star.style.top = '-10px';
+
+                    // Random neon glow for some stars
+                    const colors = ['#f0f', '#0ff', '#ff0', '#fff'];
+                    const glowColor = colors[Math.floor(Math.random() * colors.length)];
+                    star.style.boxShadow = `0 0 10px ${glowColor}`;
+
+                    star.style.opacity = Math.random();
+                    star.style.animationDuration = Math.random() * 1 + 1 + 's';
+                    document.body.appendChild(star);
+
+                    setTimeout(() => star.remove(), 2500);
+                }, 30); // ~33 stars per second!
+            }
+
+            function handleNavigate() {
+                if (window.navigateNext) {
+                    window.navigateNext();
+                } else {
+                    window.location.href = 'index.html';
+                }
+            }
+        };
     </script>
 </body>
 

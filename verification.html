@@ -5,6 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pirate Vault Verification</title>
+    <script>
+        // Dynamic base path configuration for local & GitHub Pages compatibility
+        (function() {
+            const getBasePath = () => {
+                const href = window.location.href;
+                // Check if running on GitHub Pages
+                if (href.includes('github.io')) {
+                    const parts = new URL(href).pathname.split('/').filter(Boolean);
+                    // If path has more than just the filename, it's a project site
+                    if (parts.length > 1 && !parts[0].includes('.')) {
+                        return '/' + parts[0] + '/';
+                    }
+                }
+                // For local or user/org GitHub Pages, use root
+                return '/';
+            };
+            const basePath = getBasePath();
+            if (basePath !== '/') {
+                document.write('<base href="' + basePath + '">');
+            }
+            window.BASE_PATH = basePath;
+        })();
+    </script>
 
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap">
@@ -29,6 +52,27 @@
             align-items: center;
             justify-content: center;
             height: 100dvh;
+            width: 100%;
+        }
+
+        /* Responsive for 9:16 aspect ratio */
+        @media (max-width: 480px) {
+            body {
+                height: 100dvh;
+                width: 100vw;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            body {
+                height: 100dvh;
+            }
+        }
+
+        @media (min-width: 769px) {
+            body {
+                height: 100dvh;
+            }
         }
 
         /* ------------------------------------------------------------ */
@@ -40,8 +84,8 @@
             width: 110%;
             height: 110%;
             z-index: 1;
-            /* Using your requested door (2) image */
-            background: url('images/door%20(2).png') no-repeat center center;
+
+            background: url('images/door.jpeg') no-repeat center center;
             background-size: cover;
             transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
             /* BALANCED COLOR CORRECTION */
@@ -659,7 +703,7 @@
             // 1. Restore Cinematic Background Image
             const bgLayer = document.querySelector('.background-layer');
             if (bgLayer) {
-                bgLayer.style.backgroundImage = "url('images/door%20(2).png')";
+                bgLayer.style.backgroundImage = "url('images/door.jpeg')";
                 bgLayer.style.backgroundSize = 'cover';
                 bgLayer.style.backgroundRepeat = 'no-repeat';
                 bgLayer.style.backgroundPosition = 'center center';
