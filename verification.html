@@ -31,6 +31,10 @@
 
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap">
+    <link rel="dns-prefetch" href="//www.youtube.com">
+    <link rel="dns-prefetch" href="//www.googlevideo.com">
+    <link rel="preconnect" href="https://www.youtube.com" crossorigin>
+    <link rel="preconnect" href="https://www.googlevideo.com" crossorigin>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="global.js" defer></script>
@@ -40,6 +44,15 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            touch-action: none;
+        }
+
+        html {
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
@@ -53,6 +66,12 @@
             justify-content: center;
             height: 100dvh;
             width: 100%;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         /* Responsive for 9:16 aspect ratio */
@@ -764,6 +783,14 @@
         }
 
         /* VERIFY LOGIC */
+        function getYouTubeVideoId(url) {
+            const text = String(url || '').trim();
+            if (!text) return '';
+            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+            const match = text.match(regExp);
+            return (match && match[2] && match[2].length >= 11) ? match[2].split('/')[0] : '';
+        }
+
         function verifyCode() {
             const inputs = document.querySelectorAll('.otp-box');
             let inputCode = "";
@@ -821,7 +848,11 @@
                     } else if (savedMeme) {
                         try {
                             const memeObj = JSON.parse(savedMeme);
-                            localStorage.setItem('pirateMeme', memeObj.yytlink || memeObj.yt_link || "");
+                            const memeUrl = memeObj.yytlink || memeObj.yt_link || "";
+                            const videoId = getYouTubeVideoId(memeUrl);
+
+                            localStorage.setItem('pirateMeme', memeUrl);
+                            if (videoId) localStorage.setItem('pirateMemeVideoId', videoId);
                             localStorage.setItem('pirateMemeStart', memeObj.start || 0);
                             localStorage.setItem('pirateMemeEnd', memeObj.end || 0);
                             localStorage.removeItem('lastScannedMeme');
@@ -834,7 +865,7 @@
                         // If somehow here without logic/meme, go to crew display or QR
                         window.location.replace('displaycrew.html');
                     }
-                }, 800);
+                }, 120);
 
             } else {
                 if (window.logGameEvent) logGameEvent('VERIFY', { action: 'FAILURE', input: inputCode, expected: targetCode });

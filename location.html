@@ -31,6 +31,21 @@
     <script src="global.js" defer></script>
 
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+
+        html {
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
         :root {
             --mc-bg: #8B8B8B;
             --mc-border-light: #DBDBDB;
@@ -67,9 +82,15 @@
             align-items: center;
             justify-content: center;
             height: 100dvh;
+            width: 100%;
             margin: 0;
+            padding: 0;
             overflow: hidden;
             image-rendering: pixelated;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         /* Cinematic Background */
@@ -341,6 +362,54 @@
             background: rgba(255, 170, 0, 0.1);
             border-style: solid;
         }
+
+        /* Jump Track Toast */
+        .jump-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(180, 30, 30, 0.95);
+            border: 4px solid #ff4444;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.3);
+            color: #fff;
+            padding: 20px 32px;
+            font-family: 'VT323', monospace;
+            font-size: 2rem;
+            text-align: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            animation: jumpToastAnim 2.5s ease forwards;
+        }
+
+        .jump-toast .jump-sub {
+            font-size: 1rem;
+            color: #ffcccc;
+            margin-top: 4px;
+        }
+
+        @keyframes jumpToastAnim {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+
+            15% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.05);
+            }
+
+            85% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+        }
     </style>
 </head>
 
@@ -359,7 +428,6 @@
 
             <div id="status-area" class="w-full text-center mb-4 border-b border-[#8b4513] border-dashed pb-2">
                 <span id="node-id" class="hidden"></span>
-                <span id="location-name" class="hidden"></span>
 
                 <!-- Voyage Log Section -->
 
@@ -440,10 +508,13 @@
             window.gameState = {
                 currentNode: 'A',
                 journey: [],
+                jumps: [],
                 targetNode: null,
                 currentLevel: 3
             };
         }
+        // Ensure jumps array exists on loaded state
+        if (!window.gameState.jumps) window.gameState.jumps = [];
 
         if (!window.saveGame) {
             window.saveGame = function () {
@@ -465,9 +536,51 @@
 
         let graph = null;
         let processing = false;
+        const nodeBgCache = new Map();
+        const ui = {
+            homeUi: null,
+            statusArea: null,
+            pathContainer: null,
+            scannerContainer: null,
+            manualContainer: null,
+            successModal: null,
+            pageTitle: null,
+            nodeId: null,
+            journeyBreadcrumb: null,
+            bgLayer: null,
+            passError: null
+        };
+
+        function cacheUIElements() {
+            ui.homeUi = document.getElementById('home-ui');
+            ui.statusArea = document.getElementById('status-area');
+            ui.pathContainer = document.getElementById('path-container');
+            ui.scannerContainer = document.getElementById('scanner-container');
+            ui.manualContainer = document.getElementById('manual-container');
+            ui.successModal = document.getElementById('success-modal');
+            ui.pageTitle = document.querySelector('.mc-map-paper h1');
+            ui.nodeId = document.getElementById('node-id');
+            ui.journeyBreadcrumb = document.getElementById('journey-breadcrumb');
+            ui.bgLayer = document.getElementById('bgLayer');
+            ui.passError = document.getElementById('pass-error');
+        }
+
+        function setBaseMapVisible(isVisible) {
+            const method = isVisible ? 'remove' : 'add';
+            ui.homeUi?.classList[method]('hidden');
+            ui.statusArea?.classList[method]('hidden');
+            ui.pathContainer?.classList[method]('hidden');
+            ui.pageTitle?.classList[method]('hidden');
+        }
+
+        function closeScannerView() {
+            ui.scannerContainer?.classList.add('hidden');
+            setBaseMapVisible(true);
+        }
 
         window.onload = function () {
             // Point 4: Path to graph.json is root-relative (Point 4)
+            cacheUIElements();
             if (window.initGame) initGame();
             if (window.applyTheme) applyTheme();
             const urlNode = new URLSearchParams(window.location.search).get('node');
@@ -507,27 +620,48 @@
                 .catch(err => console.warn('Graph load error:', err));
         }
 
+        // Build the journey display string: '-' for valid moves, ',' for jumps
+        function buildJourneyString() {
+            if (!Array.isArray(gameState.journey) || gameState.journey.length === 0) return '';
+            if (!Array.isArray(gameState.jumps)) gameState.jumps = [];
+            let result = gameState.journey[0];
+            for (let i = 1; i < gameState.journey.length; i++) {
+                const wasJump = gameState.jumps[i - 1] === true;
+                result += (wasJump ? ',' : '-') + gameState.journey[i];
+            }
+            return result;
+        }
+
         function updateLocation() {
             if (!graph) return;
             const nodeId = gameState.currentNode || 'START';
-            // Use graph.graph since graph.json has "graph" key
-            const locationName = graph.location_names?.[nodeId] || nodeId;
 
-            document.getElementById('node-id').innerText = nodeId;
-            document.getElementById('location-name').innerText = locationName;
-            document.getElementById('location-name').classList.remove('hidden');
+            if (ui.nodeId) ui.nodeId.innerText = nodeId;
 
             if (!Array.isArray(gameState.journey)) gameState.journey = [];
-            const displayJourney = gameState.journey.join(' to ');
-            document.getElementById('journey-breadcrumb').innerText = displayJourney;
+            if (ui.journeyBreadcrumb) ui.journeyBreadcrumb.innerText = buildJourneyString();
 
-            const bg = document.getElementById('bgLayer');
+            const bg = ui.bgLayer;
             if (bg) {
                 const imgName = nodeId === 'START' ? 'location' : `node${nodeId}`;
-                const img = new Image();
-                img.src = `images/${imgName}.jpg`;
-                img.onload = () => bg.style.backgroundImage = `url('images/${imgName}.jpg')`;
-                img.onerror = () => bg.style.backgroundImage = `url('images/location.jpg')`;
+                const imgSrc = `images/${imgName}.jpg`;
+
+                if (nodeBgCache.get(imgSrc) === true) {
+                    bg.style.backgroundImage = `url('${imgSrc}')`;
+                } else if (nodeBgCache.get(imgSrc) === false) {
+                    bg.style.backgroundImage = `url('images/location.jpg')`;
+                } else {
+                    const img = new Image();
+                    img.src = imgSrc;
+                    img.onload = () => {
+                        nodeBgCache.set(imgSrc, true);
+                        bg.style.backgroundImage = `url('${imgSrc}')`;
+                    };
+                    img.onerror = () => {
+                        nodeBgCache.set(imgSrc, false);
+                        bg.style.backgroundImage = `url('images/location.jpg')`;
+                    };
+                }
             }
             if (nodeId !== 'START') updateSparrowPos(nodeId);
 
@@ -535,28 +669,9 @@
                 setTimeout(() => window.location.replace('celebration.html'), 1000);
                 return;
             }
-
-            // Fix: Access graph.graph instead of graph.graph_logic
-            const neighbors = graph.graph?.[nodeId] || {};
-            renderPaths(neighbors);
         }
 
-        function renderPaths(neighbors) {
-            const container = document.getElementById('path-container');
-            container.innerHTML = '';
-            Object.keys(neighbors).forEach(nextId => {
-                // Fix: Access graph.location_names handling
-                const name = graph.location_names?.[nextId] || nextId;
-                const div = document.createElement('div');
-                div.className = 'path-item';
-                div.innerHTML = `<span>⚓ ${name}</span> <span class="text-xs opacity-50">${nextId}</span>`;
-                div.onclick = () => {
-                    gameState.targetNode = nextId;
-                    startScanner();
-                };
-                container.appendChild(div);
-            });
-        }
+        // Path rendering removed — player freely scans any QR
 
         function updateSparrowPos(nodeId) {
             const sparrow = document.getElementById('skull-sparrow');
@@ -565,12 +680,8 @@
         }
 
         async function startScanner() {
-            document.getElementById('home-ui').classList.add('hidden');
-            document.getElementById('status-area').classList.add('hidden');
-            document.getElementById('path-container').classList.add('hidden');
-            document.querySelector('.mc-map-paper h1').classList.add('hidden');
-
-            document.getElementById('scanner-container').classList.remove('hidden');
+            setBaseMapVisible(false);
+            ui.scannerContainer?.classList.remove('hidden');
             html5QrCode = new Html5Qrcode("reader");
             const config = { fps: 20, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0 };
             let started = false;
@@ -598,18 +709,12 @@
             if (html5QrCode) {
                 html5QrCode.stop().then(() => {
                     html5QrCode = null;
-                    document.getElementById('scanner-container').classList.add('hidden');
-                    document.getElementById('home-ui').classList.remove('hidden');
-                    document.getElementById('status-area').classList.remove('hidden');
-                    document.getElementById('path-container').classList.remove('hidden');
-                    document.querySelector('.mc-map-paper h1').classList.remove('hidden');
+                    closeScannerView();
                 }).catch(() => {
-                    document.getElementById('scanner-container').classList.add('hidden');
-                    document.getElementById('home-ui').classList.remove('hidden');
-                    document.getElementById('status-area').classList.remove('hidden');
-                    document.getElementById('path-container').classList.remove('hidden');
-                    document.querySelector('.mc-map-paper h1').classList.remove('hidden');
+                    closeScannerView();
                 });
+            } else {
+                closeScannerView();
             }
         }
 
@@ -625,52 +730,63 @@
 
             const prevNode = gameState.currentNode || 'START';
 
-            // 🚨 UNRESTRICTED MODE: ALL SCANS ACCEPTED 🚨
-            // "Scan any QR" - We accept the node regardless of graph connection
-            const isValidMove = true;
+            // Check if this is a valid graph neighbor (for jump detection)
+            const neighbors = graph?.graph?.[prevNode] || {};
+            const isNeighbor = nodeId in neighbors;
+            const isJump = !isNeighbor;
 
-            if (isValidMove) {
-                if (window.playSound) window.playSound('success');
+            if (window.playSound) window.playSound('success');
 
-                const isFirstMove = !gameState.journey || gameState.journey.length === 0;
+            const isFirstMove = !gameState.journey || gameState.journey.length === 0;
+            if (!Array.isArray(gameState.jumps)) gameState.jumps = [];
 
-                if (isFirstMove) {
-                    gameState.journey = [prevNode, nodeId];
-                } else if (gameState.journey[gameState.journey.length - 1] !== nodeId) {
-                    gameState.journey.push(nodeId);
-                }
-
-                gameState.currentNode = nodeId;
-                saveGame();
-
-                // Log it (weight 0 if not in graph)
-                const neighbors = graph?.graph?.[prevNode] || {}; // check graph.graph
-                const weight = neighbors[nodeId] || 0;
-
-                if (window.updateLevel3Session) window.updateLevel3Session(prevNode, nodeId, weight);
-
-                if (html5QrCode) {
-                    html5QrCode.stop().then(() => {
-                        html5QrCode = null;
-                        showSuccess();
-                    });
-                } else { showSuccess(); }
+            if (isFirstMove) {
+                gameState.journey = [prevNode, nodeId];
+                gameState.jumps = [isJump];
+            } else if (gameState.journey[gameState.journey.length - 1] !== nodeId) {
+                gameState.journey.push(nodeId);
+                gameState.jumps.push(isJump);
             }
-            // No cleanup needed as validMove is always true
+
+            // Track if this specific scan was a jump (for showSuccess)
+            window._lastScanWasJump = isJump;
+
+            gameState.currentNode = nodeId;
+            saveGame();
+
+            const weight = neighbors[nodeId] || 0;
+            if (window.updateLevel3Session) window.updateLevel3Session(prevNode, nodeId, weight);
+
+            // Show jump toast if jumped
+            if (isJump && prevNode !== 'START') {
+                showJumpToast(prevNode, nodeId);
+            }
+
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode = null;
+                    showSuccess();
+                });
+            } else { showSuccess(); }
+        }
+
+        function showJumpToast(fromNode, toNode) {
+            const toast = document.createElement('div');
+            toast.className = 'jump-toast';
+            toast.innerHTML = `⚠️ JUMP TRACK ⚠️<div class="jump-sub">${fromNode} ➜ ${toNode} (off-path)</div>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2600);
         }
 
         function showManualOverride() {
-            document.getElementById('home-ui').classList.add('hidden');
-            document.getElementById('status-area').classList.add('hidden');
-            document.getElementById('path-container').classList.add('hidden');
-            document.querySelector('.mc-map-paper h1').classList.add('hidden');
-            document.getElementById('scanner-container').classList.add('hidden');
-            document.getElementById('manual-container').classList.remove('hidden');
+            setBaseMapVisible(false);
+            ui.scannerContainer?.classList.add('hidden');
+            ui.manualContainer?.classList.remove('hidden');
 
             // Show password stage first
             document.getElementById('password-stage').classList.remove('hidden');
             document.getElementById('node-stage').classList.add('hidden');
-            document.getElementById('pass-error').classList.add('hidden');
+            ui.passError?.classList.add('hidden');
 
             const passInput = document.getElementById('manual-pass');
             passInput.value = '';
@@ -711,11 +827,8 @@
         }
 
         function hideManualOverride() {
-            document.getElementById('manual-container').classList.add('hidden');
-            document.getElementById('home-ui').classList.remove('hidden');
-            document.getElementById('status-area').classList.remove('hidden');
-            document.getElementById('path-container').classList.remove('hidden');
-            document.querySelector('.mc-map-paper h1').classList.remove('hidden');
+            ui.manualContainer?.classList.add('hidden');
+            setBaseMapVisible(true);
         }
 
         function submitManualNode() {
@@ -725,28 +838,26 @@
 
         function showSuccess() {
             const nodeId = gameState.currentNode || 'START';
-            const journeyStr = gameState.journey ? gameState.journey.join(' - ') : nodeId;
+            const journeyStr = buildJourneyString() || nodeId;
+            const wasJump = window._lastScanWasJump || false;
 
-            document.getElementById('scan-feedback').innerText = nodeId;
-            document.getElementById('current-msg').innerText = `${journeyStr} means current`;
+            document.getElementById('scan-feedback').innerText = wasJump ? `⚠️ ${nodeId}` : nodeId;
+            document.getElementById('current-msg').innerText = wasJump
+                ? `JUMP TRACK — Path: ${journeyStr}`
+                : `Path: ${journeyStr}`;
 
-            document.getElementById('scanner-container').classList.add('hidden');
-            document.getElementById('manual-container').classList.add('hidden');
-            document.getElementById('success-modal').classList.remove('hidden');
+            ui.scannerContainer?.classList.add('hidden');
+            ui.manualContainer?.classList.add('hidden');
+            ui.successModal?.classList.remove('hidden');
 
-            // Re-enable the map updates while showing success
+            window._lastScanWasJump = false;
             updateLocation();
         }
 
         function closeModal() {
             processing = false;
-            document.getElementById('success-modal').classList.add('hidden');
-
-            // Restore ALL UI elements to complete the loop
-            document.getElementById('home-ui').classList.remove('hidden');
-            document.getElementById('status-area').classList.remove('hidden');
-            document.getElementById('path-container').classList.remove('hidden');
-            document.querySelector('.mc-map-paper h1').classList.remove('hidden');
+            ui.successModal?.classList.add('hidden');
+            setBaseMapVisible(true);
 
             updateLocation();
         }

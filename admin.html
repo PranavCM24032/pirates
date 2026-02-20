@@ -225,6 +225,14 @@
                     class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
                     <span class="text-lg">👥</span> Roster & Logs
                 </button>
+                <button onclick="setTab('timer')" id="nav-timer"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">⏱️</span> Timer Control
+                </button>
+                <button onclick="setTab('settings')" id="nav-settings"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">⚙️</span> Settings & Reset
+                </button>
             </nav>
 
             <!-- Actions -->
@@ -312,6 +320,7 @@
             manual: {},   // { crewId: { login: bool, l2: {complete: bool, fails: int}, l3: int } }
             l1Data: {},   // { crewId: timestamp }
             l3Sessions: {}, // { crewId: { avgScore, totalMarks, scanCount, ... } }
+            liveDevices: {}, // { crewId: { ids: Set<string>, lastSeen: number } }
             leaderboard: [],
             currentTab: 'leaderboard'
         };
@@ -321,6 +330,25 @@
             if (!ts || typeof ts !== 'string' || !ts.includes(':')) return 9999;
             const [h, m] = ts.split(':').map(Number);
             return (h * 60) + m;
+        }
+
+        function toTimestampMs(value) {
+            if (typeof value === 'number' && !isNaN(value)) return value;
+            if (!value) return 0;
+            const parsed = Date.parse(value);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function touchLiveDevice(crewId, deviceId, timestampValue) {
+            if (!crewId || crewId === 'UNKNOWN') return;
+            if (!state.liveDevices[crewId]) {
+                state.liveDevices[crewId] = { ids: new Set(), lastSeen: 0 };
+            }
+            if (deviceId) state.liveDevices[crewId].ids.add(String(deviceId));
+            const ts = toTimestampMs(timestampValue);
+            if (ts > state.liveDevices[crewId].lastSeen) {
+                state.liveDevices[crewId].lastSeen = ts;
+            }
         }
 
         // --- INIT ---
@@ -346,7 +374,9 @@
                 'l1': 'LEVEL 1: MANUAL TIMESTAMP ENTRY',
                 'l2': 'LEVEL 2: QUIZ SUBMISSION TRACKING',
                 'l3': 'LEVEL 3: MAPPING & PATH LOGS',
-                'roster': 'CREW DETAILS (SENSITIVE)'
+                'roster': 'CREW DETAILS (SENSITIVE)',
+                'timer': 'TIMER CONTROL',
+                'settings': 'SETTINGS & LEVEL RESET'
             };
             document.getElementById('viewTitle').innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> ${titles[tab] || tab.toUpperCase()}`;
 
@@ -418,30 +448,93 @@
         async function refreshData() {
             try {
                 // 🌐 FETCH FROM GOOGLE SHEET (Player → Sheet → Admin)
-                const sheetUrl = 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec';
+                const sheetUrl = localStorage.getItem('google_sheet_url') || 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec';
                 const response = await fetch(sheetUrl);
                 const cloudData = await response.json();
+                state.liveDevices = {};
 
-                // Map Google Sheet data to state
+                // Map Google Sheet logs → parse the Raw JSON for full event objects
                 if (cloudData && cloudData.logs) {
-                    state.logs = cloudData.logs.map(log => ({
-                        crewId: log.Category,
-                        type: log.Type,
-                        timestamp: log.Timestamp,
-                        action: log.Raw ? (log.Raw.includes('SUCCESS') ? 'SUCCESS' : 'FAILURE') : 'UNKNOWN'
-                    }));
+                    state.logs = cloudData.logs.map(log => {
+                        // Try to parse the full event from Raw field
+                        let parsed = {};
+                        try { parsed = JSON.parse(log.Raw || '{}'); } catch (e) { /* ignore */ }
+                        const normalized = {
+                            crewId: parsed.crewId || log.Category || 'UNKNOWN',
+                            type: parsed.type || log.Type || 'UNKNOWN',
+                            timestamp: parsed.timestamp || log.Timestamp,
+                            deviceId: parsed.deviceId || log.Device_ID || '',
+                            sessionId: parsed.sessionId || log.Session_ID || '',
+                            page: parsed.page || log.Page || '',
+                            action: parsed.action || (log.Raw && log.Raw.includes('SUCCESS') ? 'SUCCESS' : 'UNKNOWN'),
+                            // Preserve extra fields from the raw event (mark, from, to, etc.)
+                            ...parsed
+                        };
+                        touchLiveDevice(normalized.crewId, normalized.deviceId, normalized.timestamp);
+                        return normalized;
+                    });
                 }
 
                 if (cloudData && cloudData.leaderboard) {
-                    // Parse leaderboard data from sheet
+                    if (!state.l3Sessions) state.l3Sessions = {};
+
                     cloudData.leaderboard.forEach(row => {
                         const crewId = row.CrewID;
-                        if (row.Score_L3 && row.Score_L3 !== '-') {
-                            // Add to L3 sessions
-                            if (!state.l3Sessions) state.l3Sessions = {};
+                        if (!crewId) return;
+
+                        // L1: Parse timestamp from cloud
+                        if (row.Score_L1 && row.Score_L1 !== '-') {
+                            state.l1Data[crewId] = row.Score_L1;
+                        }
+
+                        // L2: Parse completion status
+                        if (row.Score_L2 && row.Score_L2 === 'COMPLETE') {
+                            if (!state.manual[crewId]) state.manual[crewId] = {};
+                            if (!state.manual[crewId].l2) {
+                                state.manual[crewId].l2 = { timestamp: row.Last_Seen || '-', fails: 0 };
+                            }
+                        }
+
+                        // L3: Parse path, marks, scan count
+                        const l3Marks = parseFloat(row.Score_L3) || 0;
+                        const pathTrace = row.Path_Trace || '-';
+                        const scanCount = parseInt(row.Scan_Count) || 0;
+                        const lastSeen = row.Last_Seen || '-';
+                        const deviceId = row.Device_ID || '';
+
+                        if (l3Marks > 0 || pathTrace !== '-' || scanCount > 0) {
                             state.l3Sessions[crewId] = {
                                 crewId: crewId,
-                                totalMarks: parseFloat(row.Score_L3) || 0
+                                totalMarks: l3Marks,
+                                pathTrace: pathTrace,
+                                scanCount: scanCount,
+                                lastScanTime: lastSeen !== '-' ? new Date().getTime() : 0,
+                                avgScore: scanCount > 1 ? Math.round((l3Marks / (scanCount - 1)) * 100) / 100 : 0
+                            };
+                        }
+                        touchLiveDevice(crewId, deviceId, lastSeen);
+
+                        // Login status from cloud
+                        if (row.Status && row.Status !== 'ACTIVE') {
+                            if (!state.manual[crewId]) state.manual[crewId] = {};
+                            state.manual[crewId].login = true;
+                        }
+                    });
+                }
+
+                // Also merge path analytics if available
+                if (cloudData && cloudData.paths) {
+                    cloudData.paths.forEach(row => {
+                        const crewId = row.CrewID;
+                        if (!crewId) return;
+                        if (!state.l3Sessions[crewId]) {
+                            state.l3Sessions[crewId] = {
+                                crewId: crewId,
+                                totalMarks: parseInt(row.Internal_Marks) || 0,
+                                pathTrace: row.Path || '-',
+                                scanCount: parseInt(row.Scans) || 0,
+                                lastScanTime: row.Last_Scan ? new Date(row.Last_Scan).getTime() : 0,
+                                avgScore: parseFloat(row.Avg_Score) || 0
                             };
                         }
                     });
@@ -457,6 +550,7 @@
                 state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
 
                 state.l3Sessions = {};
+                state.liveDevices = {};
                 try {
                     const l3All = JSON.parse(localStorage.getItem('level3_sessions') || '[]');
                     l3All.forEach(session => {
@@ -465,6 +559,7 @@
                 } catch (e) {
                     console.warn("Failed to load L3 sessions:", e);
                 }
+                state.logs.forEach(log => touchLiveDevice(log.crewId, log.deviceId, log.timestamp));
             }
 
             // Ensure L3Sessions exists
@@ -492,6 +587,12 @@
 
         // --- CORE LOGIC ---
         function calculateScores() {
+            // Safety check for crews data
+            if (!state.crews || !Array.isArray(state.crews) || state.crews.length === 0) {
+                state.leaderboard = [];
+                return;
+            }
+
             state.leaderboard = state.crews.map(crew => {
                 const id = crew.crewid;
                 const mData = state.manual[id] || {};
@@ -522,8 +623,15 @@
                 if (manualTimestamp) {
                     l2Success = true;
                     l2time = manualTimestamp;
-                } else if (successLog) {
-                    l2time = new Date(successLog.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                } else if (successLog && successLog.timestamp) {
+                    try {
+                        const dateObj = new Date(successLog.timestamp);
+                        if (!isNaN(dateObj.getTime())) {
+                            l2time = dateObj.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse L2 timestamp:', successLog.timestamp, e);
+                    }
                 }
 
                 // Determine Fails
@@ -570,37 +678,38 @@
 
                 // Final Score = Sum + Manual Bonus
                 const manualL3 = parseInt(mData.l3) || 0;
-                // const l3Score = l3TotalWeight + manualL3; // Old L3 scoring
 
-                // --- NEW PERFORMANCE SCORING ---
-                // Base points for completion, adjusted by efficiency
-
-                // L1: 100 points base, minus 0.1 per minute past 09:00
+                // --- SIMPLIFIED SCORING SYSTEM ---
+                
+                // LEVEL 1: Max 10 points
+                // Completion-based: 10 points if completed, 0 if not
                 let l1Score = 0;
                 if (l1Ts) {
-                    const mins = timeToMinutes(l1Ts);
-                    const penalty = Math.max(0, (mins - 540) * 0.1); // 540 = 09:00
-                    l1Score = Math.max(1, 100 - penalty);
+                    l1Score = 10; // Max 10 points for Level 1
                 }
 
-                // L2: 200 points base, minus 0.2 per minute past 09:00, minus 5 per fail
+                // LEVEL 2: Max 10 points but -2 on incorrect
+                // Base 10 points, minus 2 per failed attempt
                 let l2Score = 0;
                 if (l2Success) {
-                    const mins = timeToMinutes(l2time);
-                    const timePenalty = Math.max(0, (mins - 540) * 0.2);
-                    const failPenalty = l2Fails * 5;
-                    l2Score = Math.max(5, 200 - timePenalty - failPenalty);
+                    l2Score = 10 - (l2Fails * 2); // 10 - (fails × 2)
+                    if (l2Score < 0) l2Score = 0; // Minimum 0 points
                 }
 
-                // L3: 500 points base, minus the marks sum (Lower is better)
+                // LEVEL 3: Based on weighted edges sum
+                // Direct score from totalMarks (weighted edges)
                 let l3Score = 0;
                 if (l3TotalWeight > 0 || l3Logs.length > 0) {
-                    l3Score = Math.max(10, 500 - l3TotalWeight);
+                    l3Score = l3TotalWeight; // Direct score from weighted edges sum
+                } else {
+                    l3Score = manualL3; // Use manual override if no auto score
                 }
 
                 return {
                     ...crew,
                     isLoggedIn,
+                    deviceCount: state.liveDevices[id] ? state.liveDevices[id].ids.size : 0,
+                    lastActiveAt: state.liveDevices[id] ? state.liveDevices[id].lastSeen : 0,
                     l1Timestamp: l1Ts,
                     l1Score: Math.round(l1Score * 10) / 10,
                     l2Success,
@@ -704,22 +813,35 @@
             const wrapperEnd = '</div>';
 
             if (tab === 'leaderboard') {
-                html = wrapperStart + header('0.5fr 2fr 1fr 1fr 1fr 1fr', '#', 'CREW', 'L1', 'L2', 'L3', 'TOTAL');
+                html = wrapperStart + header('0.4fr 2fr 1.2fr 1.2fr 1.2fr 1fr', '#', 'CREW', 'L1 (100)', 'L2 (200)', 'L3 (500)', 'TOTAL');
                 html += '<div class="divide-y divide-slate-800">';
-                html += data.map((d, i) => row('0.5fr 2fr 1fr 1fr 1fr 1fr', `
-                    <div class="font-mono text-slate-500">#${i + 1}</div>
+                html += data.map((d, i) => {
+                    // Rank badge colors
+                    const rankColor = i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-400' : 'text-slate-600';
+                    const rankBg = i < 3 ? 'bg-amber-500/10' : '';
+
+                    return row('0.4fr 2fr 1.2fr 1.2fr 1.2fr 1fr', `
+                    <div class="font-mono font-bold ${rankColor}">#${i + 1}</div>
                     <div>
                         <div class="font-bold text-white">${d.crewname}</div>
                         <div class="text-[10px] text-blue-400 font-mono">${d.crewid}</div>
                     </div>
-                    <div class="font-mono ${d.l1Score > 0 ? 'text-green-400' : 'text-slate-600'}">${d.l1Score > 0 ? '+10' : '-'}</div>
                     <div>
-                        <div class="font-mono ${d.l2Score > 0 ? 'text-green-400' : 'text-slate-600'}">${d.l2Score}</div>
-                        ${d.l2Fails > 0 ? `<div class="text-[9px] text-red-400">-${d.l2Fails * 2} pen</div>` : ''}
+                        <div class="font-mono font-bold ${d.l1Score > 0 ? 'text-green-400' : 'text-slate-600'}">${d.l1Score > 0 ? d.l1Score : '-'}</div>
+                        ${d.l1Timestamp ? `<div class="text-[9px] text-slate-500">${d.l1Timestamp}</div>` : ''}
                     </div>
-                    <div class="font-mono text-blue-400">${d.l3Score}</div>
-                    <div class="font-mono font-bold text-amber-400 text-lg">${d.totalScore}</div>
-                `)).join('');
+                    <div>
+                        <div class="font-mono font-bold ${d.l2Score > 0 ? 'text-green-400' : 'text-slate-600'}">${d.l2Score > 0 ? d.l2Score : '-'}</div>
+                        ${d.l2Fails > 0 ? `<div class="text-[9px] text-red-400">${d.l2Fails} fail${d.l2Fails > 1 ? 's' : ''}</div>` : ''}
+                        ${d.l2Success ? `<div class="text-[9px] text-green-500">✓ done</div>` : ''}
+                    </div>
+                    <div>
+                        <div class="font-mono font-bold ${d.l3Score > 0 ? 'text-blue-400' : 'text-slate-600'}">${d.l3Score > 0 ? d.l3Score : '-'}</div>
+                        ${d.l3TotalWeight > 0 ? `<div class="text-[9px] text-slate-500">wt: ${d.l3TotalWeight}</div>` : ''}
+                    </div>
+                    <div class="font-mono font-bold text-amber-400 text-lg ${rankBg} rounded px-1">${d.totalScore}</div>
+                `);
+                }).join('');
                 html += '</div>' + wrapperEnd;
 
             } else if (state.currentTab === 'login') {
@@ -876,13 +998,18 @@
                 `;
             } else if (state.currentTab === 'roster') {
                 // ROSTER: FULL CREW DETAILS
-                html = wrapperStart + header('0.8fr 1.5fr 1.5fr 1fr 2fr', 'CREW ID', 'CREW NAME', 'CAPTAIN', 'PASSWORD', 'MEMBERS');
+                html = wrapperStart + header('0.8fr 1.5fr 1.3fr 0.8fr 1.1fr 1fr 2fr', 'CREW ID', 'CREW NAME', 'CAPTAIN', 'PHONES', 'LAST ACTIVE', 'PASSWORD', 'MEMBERS');
                 html += state.crews.map(c => {
+                    const crewStats = state.leaderboard.find(x => x.crewid === c.crewid) || {};
+                    const phones = crewStats.deviceCount || 0;
+                    const lastActive = crewStats.lastActiveAt ? new Date(crewStats.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
                     const members = Array.isArray(c.members) ? c.members.join(', ') : c.members;
-                    return row('0.8fr 1.5fr 1.5fr 1fr 2fr', `
+                    return row('0.8fr 1.5fr 1.3fr 0.8fr 1.1fr 1fr 2fr', `
                         <div class="font-mono text-blue-400 font-bold">${c.crewid}</div>
                         <div class="text-white">${c.crewname}</div>
                         <div class="text-amber-400 text-xs">${c.captain}</div>
+                        <div class="font-mono text-cyan-400 font-bold">${phones}</div>
+                        <div class="font-mono text-slate-300 text-xs">${lastActive}</div>
                         <div class="font-mono text-red-400 font-bold tracking-wider">${c.password}</div>
                         <div class="text-slate-400 text-xs break-words">${members}</div>
                     `);
@@ -929,6 +1056,36 @@
                                     <div class="text-[10px] text-red-400/70 group-hover:text-red-200">WIPE EVERYTHING. Cloud + Local. Irreversible.</div>
                                 </button>
                             </div>
+                        </div>
+
+                        <div class="glass-panel p-6 rounded-2xl border-t-2 border-amber-500">
+                            <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                <span class="text-xl">🔄</span> Level-Wise Reset
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+                                Reset individual levels between rounds. Only clears that level's data — other levels stay intact.
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button onclick="resetLevel(1)" class="p-4 bg-amber-900/20 border border-amber-500/40 rounded-xl hover:bg-amber-600/30 transition-all text-center group">
+                                    <div class="text-2xl mb-2">⚓</div>
+                                    <div class="text-sm font-bold text-amber-400 group-hover:text-amber-300 uppercase">Reset L1</div>
+                                    <div class="text-[10px] text-slate-500 mt-1">Clears all timestamps</div>
+                                </button>
+                                <button onclick="resetLevel(2)" class="p-4 bg-blue-900/20 border border-blue-500/40 rounded-xl hover:bg-blue-600/30 transition-all text-center group">
+                                    <div class="text-2xl mb-2">🧩</div>
+                                    <div class="text-sm font-bold text-blue-400 group-hover:text-blue-300 uppercase">Reset L2</div>
+                                    <div class="text-[10px] text-slate-500 mt-1">Clears quiz results</div>
+                                </button>
+                                <button onclick="resetLevel(3)" class="p-4 bg-purple-900/20 border border-purple-500/40 rounded-xl hover:bg-purple-600/30 transition-all text-center group">
+                                    <div class="text-2xl mb-2">🗺️</div>
+                                    <div class="text-sm font-bold text-purple-400 group-hover:text-purple-300 uppercase">Reset L3</div>
+                                    <div class="text-[10px] text-slate-500 mt-1">Clears paths & scans</div>
+                                </button>
+                            </div>
+                            <button onclick="resetAllLevels()" class="w-full mt-4 p-3 bg-red-900/30 border border-red-500/40 rounded-xl hover:bg-red-600/40 transition-all text-center group">
+                                <div class="text-xs font-bold text-red-400 group-hover:text-white uppercase">RESET ALL 3 LEVELS (Keep Logins)</div>
+                                <div class="text-[10px] text-slate-500 mt-1">Resets L1 + L2 + L3 but keeps login status & crew data</div>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -1020,12 +1177,14 @@
                     Rank: i + 1,
                     CrewID: d.crewid,
                     Name: d.crewname,
-                    Status: d.l3Avg > 0 ? 'LEVEL_3_RACE' : (d.l2Success ? 'LEVEL_2_CERTIFIED' : 'ACTIVE'),
+                    Status: d.l3TotalWeight > 0 ? 'LEVEL_3_RACE' : (d.l2Success ? 'LEVEL_2_CERTIFIED' : 'ACTIVE'),
                     Score_L1: d.l1Score,
                     Score_L2: d.l2Score,
-                    Score_L3: d.l3Avg.toFixed(2),
+                    Score_L3: d.l3TotalWeight || 0,
                     Total_Points: d.totalScore.toFixed(2),
-                    Last_Seen: d.l1Timestamp || '-'
+                    Last_Seen: d.l1Timestamp || '-',
+                    Path_Trace: d.pathTrace || '-',
+                    Scan_Count: d.l3ScanCount || 0
                 }));
 
                 // TIER 2: Path Analytics (L3 Specific)
@@ -1034,10 +1193,10 @@
                     return {
                         CrewID: d.crewid,
                         Name: d.crewname,
-                        Path: s.pathTrace || '-',
-                        Scans: s.scanCount || 0,
-                        Internal_Marks: s.totalMarks || 0,
-                        Avg_Score: (d.l3Avg || 0).toFixed(2),
+                        Path: s.pathTrace || d.pathTrace || '-',
+                        Scans: s.scanCount || d.l3ScanCount || 0,
+                        Internal_Marks: s.totalMarks || d.l3TotalWeight || 0,
+                        Avg_Score: (s.avgScore || 0).toFixed(2),
                         Last_Scan: s.lastScanTime ? new Date(s.lastScanTime).toLocaleTimeString() : '-'
                     };
                 });
@@ -1047,6 +1206,9 @@
                     Timestamp: new Date(l.timestamp).toLocaleString(),
                     Type: l.type,
                     Category: l.crewId,
+                    Device_ID: l.deviceId || '',
+                    Session_ID: l.sessionId || '',
+                    Page: l.page || '',
                     Raw: JSON.stringify(l)
                 }));
 
@@ -1090,6 +1252,26 @@
             };
             localStorage.setItem('pirate_timer_command', JSON.stringify(cmd));
             setTimeout(refreshData, 100);
+        }
+
+        function clearClientPathState() {
+            try {
+                const rawState = localStorage.getItem('pirateState');
+                if (!rawState) return;
+
+                const pirateState = JSON.parse(rawState);
+                if (!pirateState || typeof pirateState !== 'object') return;
+
+                pirateState.journey = [];
+                pirateState.jumps = [];
+                pirateState.level3Session = null;
+                pirateState.currentNode = 'START';
+                pirateState.targetNode = null;
+
+                localStorage.setItem('pirateState', JSON.stringify(pirateState));
+            } catch (e) {
+                console.warn('Failed to clear client path state:', e);
+            }
         }
 
 
@@ -1262,6 +1444,99 @@
                     }
                 }
             }
+        };
+
+        // ===== LEVEL-WISE RESET FUNCTIONS =====
+        window.resetLevel = (level) => {
+            const levelNames = { 1: 'Level 1 (Timestamps)', 2: 'Level 2 (Quiz Results)', 3: 'Level 3 (Paths & Scans)' };
+            if (!confirm(`⚠️ RESET ${levelNames[level]}?\n\nThis will clear all ${levelNames[level]} data for every crew.\nOther levels stay intact.\n\nContinue?`)) return;
+
+            if (level === 1) {
+                // Clear L1 timestamps
+                state.l1Data = {};
+                localStorage.removeItem(KEYS.L1);
+
+                // Clear L1-related manual overrides
+                Object.keys(state.manual).forEach(id => {
+                    if (state.manual[id]) delete state.manual[id].l1;
+                });
+                localStorage.setItem(KEYS.MANUAL, JSON.stringify(state.manual));
+
+                // Remove L1-related logs
+                state.logs = state.logs.filter(l => !['LEVEL1_COMPLETE', 'L1_SCAN'].includes(l.type));
+                localStorage.setItem(KEYS.LOGS, JSON.stringify(state.logs));
+
+                alert('✅ Level 1 Reset Complete!\nAll timestamps cleared.');
+
+            } else if (level === 2) {
+                // Clear L2 manual overrides
+                Object.keys(state.manual).forEach(id => {
+                    if (state.manual[id]) delete state.manual[id].l2;
+                });
+                localStorage.setItem(KEYS.MANUAL, JSON.stringify(state.manual));
+
+                // Remove L2-related logs (VERIFY events)
+                state.logs = state.logs.filter(l => l.type !== 'VERIFY');
+                localStorage.setItem(KEYS.LOGS, JSON.stringify(state.logs));
+
+                alert('✅ Level 2 Reset Complete!\nAll quiz results cleared.');
+
+            } else if (level === 3) {
+                // Clear L3 sessions
+                state.l3Sessions = {};
+                localStorage.removeItem('level3_sessions');
+                clearClientPathState();
+
+                // Clear L3 manual overrides
+                Object.keys(state.manual).forEach(id => {
+                    if (state.manual[id]) delete state.manual[id].l3;
+                });
+                localStorage.setItem(KEYS.MANUAL, JSON.stringify(state.manual));
+
+                // Remove L3-related logs
+                state.logs = state.logs.filter(l => !['LEVEL3_SCAN', 'LOCATION'].includes(l.type));
+                localStorage.setItem(KEYS.LOGS, JSON.stringify(state.logs));
+
+                alert('✅ Level 3 Reset Complete!\nAll paths, scans & sessions cleared.');
+            }
+
+            // Sync the cleaned state to Google Sheets
+            syncToSheets();
+            refreshData();
+        };
+
+        window.resetAllLevels = () => {
+            if (!confirm('⚠️ RESET ALL 3 LEVELS?\n\nThis will clear L1 timestamps, L2 quiz results, and L3 paths/scans.\nLogin status & crew data will be kept.\n\nContinue?')) return;
+
+            const confirmation = prompt("Type 'RESET' to confirm:");
+            if (confirmation !== 'RESET') return alert('Cancelled.');
+
+            // L1
+            state.l1Data = {};
+            localStorage.removeItem(KEYS.L1);
+
+            // L2 + L3 manual overrides
+            Object.keys(state.manual).forEach(id => {
+                if (state.manual[id]) {
+                    delete state.manual[id].l1;
+                    delete state.manual[id].l2;
+                    delete state.manual[id].l3;
+                }
+            });
+            localStorage.setItem(KEYS.MANUAL, JSON.stringify(state.manual));
+
+            // L3 sessions
+            state.l3Sessions = {};
+            localStorage.removeItem('level3_sessions');
+            clearClientPathState();
+
+            // Clear level-specific logs but keep LOGIN logs
+            state.logs = state.logs.filter(l => l.type === 'LOGIN');
+            localStorage.setItem(KEYS.LOGS, JSON.stringify(state.logs));
+
+            alert('✅ All 3 Levels Reset!\nLogin status preserved. Ready for next round.');
+            syncToSheets();
+            refreshData();
         };
 
         window.clearEverything = () => {

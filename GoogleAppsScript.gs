@@ -5,6 +5,7 @@
 
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureRequiredHeaders(ss);
   const result = {
     leaderboard: getSheetData(ss, "Leaderboard"),
     logs: getSheetData(ss, "EventLogs"),
@@ -28,6 +29,7 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    ensureRequiredHeaders(ss);
     
     // ACTION: RESET FULL GAME
     if (data.action === "RESET_GAME") {
@@ -57,6 +59,10 @@ function doPost(e) {
     // TIER 2: Event Logging
     else if (data.action === "LOG_EVENT") {
       appendLine(ss, "EventLogs", data.event);
+    }
+    // TIER 2B: Batched Event Logging
+    else if (data.action === "BATCH_EVENTS") {
+      appendLines(ss, "EventLogs", data.events || []);
     }
     
     SpreadsheetApp.flush();
@@ -96,10 +102,10 @@ function clearSheet(ss, name) {
 
 function setupHeaders(ss) {
   let lb = getSheet(ss, "Leaderboard");
-  if (lb.getLastRow() === 0) lb.appendRow(["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Total_Points", "Last_Seen"]);
+  if (lb.getLastRow() === 0) lb.appendRow(["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Total_Points", "Last_Seen", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
   
   let el = getSheet(ss, "EventLogs");
-  if (el.getLastRow() === 0) el.appendRow(["Timestamp", "Type", "Category", "Raw"]);
+  if (el.getLastRow() === 0) el.appendRow(["Timestamp", "Type", "Category", "Device_ID", "Session_ID", "Page", "Raw"]);
 
   let pa = getSheet(ss, "PathAnalytics");
   if (pa.getLastRow() === 0) pa.appendRow(["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan"]);
@@ -151,16 +157,46 @@ function updateCrewStanding(ss, crew) {
   const crewIdCol = headers.indexOf("CrewID");
   
   if (crewIdCol === -1) return; // Should not happen if headers are set
-  
-  const ids = sheet.getRange(2, crewIdCol + 1, sheet.getLastRow() - 1, 1).getValues().flat();
-  let rowIndex = ids.indexOf(String(crew.CrewID)) + 2; 
+
+  const lastRow = sheet.getLastRow();
+  let rowIndex = -1;
+  if (lastRow > 1) {
+    const ids = sheet.getRange(2, crewIdCol + 1, lastRow - 1, 1).getValues().flat();
+    rowIndex = ids.indexOf(String(crew.CrewID)) + 2;
+  }
   
   const rowData = headers.map(h => crew[h] || "");
   
-  if (rowIndex > 1) { 
+  if (rowIndex > 1) {
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
-  } else { 
+  } else {
     sheet.appendRow(rowData);
+  }
+}
+
+function ensureRequiredHeaders(ss) {
+  ensureSheetHeaders(ss, "Leaderboard", ["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Total_Points", "Last_Seen", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
+  ensureSheetHeaders(ss, "EventLogs", ["Timestamp", "Type", "Category", "Device_ID", "Session_ID", "Page", "Raw"]);
+  ensureSheetHeaders(ss, "PathAnalytics", ["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan"]);
+}
+
+function ensureSheetHeaders(ss, name, requiredHeaders) {
+  const sheet = getSheet(ss, name);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(requiredHeaders);
+    return;
+  }
+
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) {
+    sheet.appendRow(requiredHeaders);
+    return;
+  }
+
+  const current = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || '').trim());
+  const missing = requiredHeaders.filter(h => !current.includes(h));
+  if (missing.length > 0) {
+    sheet.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
   }
 }
 
@@ -171,4 +207,17 @@ function appendLine(ss, name, row) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const data = headers.map(h => row[h] || "-"); 
   sheet.appendRow(data);
+}
+
+function appendLines(ss, name, rows) {
+  if (!rows || rows.length === 0) return;
+
+  let sheet = getSheet(ss, name);
+  if (sheet.getLastRow() === 0) setupHeaders(ss);
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const values = rows.map(row => headers.map(h => row[h] || "-"));
+  const startRow = sheet.getLastRow() + 1;
+
+  sheet.getRange(startRow, 1, values.length, headers.length).setValues(values);
 }

@@ -29,20 +29,38 @@
         })();
     </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+    <link rel="dns-prefetch" href="//www.youtube.com">
+    <link rel="dns-prefetch" href="//www.googlevideo.com">
+    <link rel="preconnect" href="https://www.youtube.com" crossorigin>
+    <link rel="preconnect" href="https://www.googlevideo.com" crossorigin>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            touch-action: none;
         }
 
-        html,
+        html {
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
         body {
             background: #000;
             height: 100dvh;
-            width: 100vw;
+            width: 100%;
             overflow: hidden;
             position: fixed;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         /* HIDE GLOBAL TIMER ON THIS PAGE */
@@ -54,7 +72,7 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
+            width: 100%;
             height: 100dvh;
             background: #000;
             overflow: hidden;
@@ -150,8 +168,27 @@
         // YouTube IFrame API Player
         let player;
         const ytLink = localStorage.getItem('pirateMeme');
+        const cachedVideoId = localStorage.getItem('pirateMemeVideoId') || '';
         const start = parseInt(localStorage.getItem('pirateMemeStart') || 0);
         const end = parseInt(localStorage.getItem('pirateMemeEnd') || 0);
+
+        function getYouTubeVideoId(url) {
+            const text = String(url || '').trim();
+            if (!text) return '';
+            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+            const match = text.match(regExp);
+            return (match && match[2] && match[2].length >= 11) ? match[2].split('/')[0] : '';
+        }
+
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loading-overlay');
+            if (!overlay) return;
+            overlay.style.transition = 'opacity 0.35s ease';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 360);
+        }
 
         function onYouTubeIframeAPIReady() {
             if (!ytLink) {
@@ -159,15 +196,12 @@
                 return;
             }
 
-            let videoId = '';
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
-            const match = ytLink.match(regExp);
-            if (match && match[2] && match[2].length >= 11) {
-                videoId = match[2].split('/')[0];
-            } else {
+            const videoId = cachedVideoId || getYouTubeVideoId(ytLink);
+            if (!videoId) {
                 window.location.replace('qr.html');
                 return;
             }
+            localStorage.setItem('pirateMemeVideoId', videoId);
 
             player = new YT.Player('player-container', {
                 height: '100%',
@@ -206,15 +240,7 @@
                 event.target.setVolume(100);
             }, 100);
 
-            // Fade out loading screen
-            setTimeout(() => {
-                const overlay = document.getElementById('loading-overlay');
-                overlay.style.transition = 'opacity 0.8s ease';
-                overlay.style.opacity = '0';
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                }, 50);
-            }, 100);
+            hideLoadingOverlay();
         }
 
         function onPlayerStateChange(event) {
@@ -238,6 +264,7 @@
             }
 
             localStorage.removeItem('pirateMeme');
+            localStorage.removeItem('pirateMemeVideoId');
             localStorage.removeItem('pirateMemeStart');
             localStorage.removeItem('pirateMemeEnd');
 
@@ -251,8 +278,16 @@
         // Load the IFrame Player API
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
+        tag.async = true;
+        tag.onerror = () => {
+            hideLoadingOverlay();
+            window.location.replace('qr.html');
+        };
         const firstScriptTag = document.getElementsByTagName('script')[0];
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        // Fallback so users don't wait on a black overlay during slow networks.
+        setTimeout(hideLoadingOverlay, 2500);
     </script>
 </body>
 

@@ -38,6 +38,15 @@
             padding: 0;
             box-sizing: border-box;
             image-rendering: pixelated;
+            touch-action: none;
+        }
+
+        html {
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
@@ -51,8 +60,14 @@
             align-items: center;
             justify-content: center;
             height: 100dvh;
+            margin: 0;
             padding: 20px;
             position: relative;
+            box-sizing: border-box;
+            width: 100%;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .background-layer {
@@ -245,7 +260,9 @@
             // Display Level 3 stats if applicable
             if (gameState.currentLevel === 3) {
                 // Ensure the session is marked as complete
-                completeLevel3Session();
+                if (typeof window.completeLevel3Session === 'function') {
+                    window.completeLevel3Session();
+                }
 
                 if (gameState.level3Session) {
                     const session = gameState.level3Session;
@@ -355,7 +372,7 @@
 
             function createStars() {
                 // HYPER DENSE STAR RAIN
-                setInterval(() => {
+                const starIntervalId = setInterval(() => {
                     const star = document.createElement('div');
                     star.className = 'star';
                     const size = Math.random() * 6 + 2 + 'px';
@@ -375,6 +392,8 @@
 
                     setTimeout(() => star.remove(), 2500);
                 }, 30); // ~33 stars per second!
+
+                window.addEventListener('pagehide', () => clearInterval(starIntervalId), { once: true });
             }
 
             function handleNavigate() {
@@ -385,6 +404,7 @@
                 }
             }
         };
+
     </script>
 </body>
 

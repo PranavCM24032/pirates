@@ -37,7 +37,7 @@ window.PiratesUtils = {
      */
     debounce: (fn, delay) => {
         let timeout;
-        return (...args) => {
+        return function (...args) {
             clearTimeout(timeout);
             timeout = setTimeout(() => fn.apply(this, args), delay);
         };
@@ -57,10 +57,35 @@ const gameState = {
     targetNode: null,
     points: 0,
     level3Session: null,
-    journey: []
+    journey: [],
+    jumps: []
 };
 
 window.gameState = gameState; // Export to window
+
+const CLIENT_META_KEYS = {
+    deviceId: 'pirate_device_id',
+    sessionId: 'pirate_session_id'
+};
+
+function getOrCreateClientMeta() {
+    let deviceId = localStorage.getItem(CLIENT_META_KEYS.deviceId);
+    if (!deviceId) {
+        deviceId = `DV-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
+        localStorage.setItem(CLIENT_META_KEYS.deviceId, deviceId);
+    }
+
+    let sessionId = sessionStorage.getItem(CLIENT_META_KEYS.sessionId);
+    if (!sessionId) {
+        sessionId = `SS-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
+        sessionStorage.setItem(CLIENT_META_KEYS.sessionId, sessionId);
+    }
+
+    return { deviceId, sessionId };
+}
+
+const clientMeta = getOrCreateClientMeta();
+window.PiratesClientMeta = clientMeta;
 
 /**
  * Initializes game state from localStorage
@@ -72,13 +97,14 @@ function initGame() {
         if (parsed && typeof parsed === 'object') {
             Object.assign(gameState, {
                 teamData: parsed.teamData || null,
-                currentLevel: parseInt(parsed.currentLevel) || 1,
-                scanCount: parseInt(parsed.scanCount) || 0,
+                currentLevel: parseInt(parsed.currentLevel, 10) || 1,
+                scanCount: parseInt(parsed.scanCount, 10) || 0,
                 currentNode: parsed.currentNode || null,
                 targetNode: parsed.targetNode || null,
-                points: parseInt(parsed.points) || 0,
+                points: parseInt(parsed.points, 10) || 0,
                 level3Session: parsed.level3Session || null,
-                journey: parsed.journey || []
+                journey: parsed.journey || [],
+                jumps: parsed.jumps || []
             });
         }
     }
@@ -202,6 +228,14 @@ window.updateLevel3Session = function (fromNode, toNode, mark) {
     }
 };
 
+window.completeLevel3Session = function () {
+    if (!gameState.level3Session || gameState.level3Session.completed) return false;
+    gameState.level3Session.completed = true;
+    gameState.level3Session.completedAt = Date.now();
+    saveLevel3Session();
+    return true;
+};
+
 // Global Logging System
 window.logGameEvent = function (type, data = {}) {
     try {
@@ -212,6 +246,9 @@ window.logGameEvent = function (type, data = {}) {
             timestamp: Date.now(),
             type: type.toUpperCase().slice(0, 50),
             crewId: gameState.teamData ? window.escapeHTML(String(gameState.teamData.crewid || gameState.teamData.id)).slice(0, 50) : 'UNKNOWN',
+            deviceId: clientMeta.deviceId,
+            sessionId: clientMeta.sessionId,
+            page: (window.location.pathname.split('/').pop() || 'unknown').slice(0, 60),
             level: parseInt(gameState.currentLevel) || 1,
             ...Object.keys(data).reduce((acc, key) => {
                 const val = data[key];
@@ -316,6 +353,7 @@ function applyTheme() {
     themeMap.forEach(({ selector, colors, config }) => {
         const elements = document.querySelectorAll(selector);
         if (elements.length === 0) return;
+        const isGlassSelector = selector.includes('glass');
 
         const style = createMinecraftBlockStyle(colors.main, colors.dark, colors.border);
 
@@ -330,7 +368,7 @@ function applyTheme() {
             if (config.backdropFilter) s.backdropFilter = config.backdropFilter;
             if (config.boxShadow) s.boxShadow = config.boxShadow;
 
-            if (selector.includes('glass')) {
+            if (isGlassSelector) {
                 s.borderRadius = '2px';
                 s.position = 'relative';
             }
@@ -338,12 +376,13 @@ function applyTheme() {
     });
 }
 
+const EXCLUDED_HUD_PAGES = new Set(['index.html', 'displaycrew.html', 'login.html']);
+const getCurrentPage = () => window.location.pathname.split('/').pop() || 'index.html';
+
 // Global HUD
 function injectGlobalHUD() {
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    const excludedPages = ['index.html', 'displaycrew.html', 'login.html'];
-
-    if (excludedPages.includes(currentPage) || document.querySelector('.global-hud')) return;
+    const currentPage = getCurrentPage();
+    if (EXCLUDED_HUD_PAGES.has(currentPage) || document.querySelector('.global-hud')) return;
 
     const hud = document.createElement('div');
     hud.className = 'global-hud';
@@ -371,14 +410,18 @@ function initClientTimer() {
     slot.appendChild(timerDisplay);
 
     const spans = { h: null, m: null, s: null };
+    const fmt = n => n.toString().padStart(2, '0');
     let timerId = null;
+    let lastDisplayTime = null;
+    let lastMode = '';
 
     const updateUI = () => {
         const rawState = localStorage.getItem('pirate_timer_state');
         if (!rawState) return;
 
         try {
-            const state = JSON.parse(rawState);
+            const state = window.safeJSONParse(rawState, null);
+            if (!state) return;
             const now = Date.now();
             let displayTime = state.remaining;
 
@@ -390,28 +433,39 @@ function initClientTimer() {
             if (displayTime > 0 || state.isFinished) timerDisplay.style.display = 'block';
 
             if (state.isFinished || (displayTime === 0 && state.isRunning)) {
-                timerDisplay.innerHTML = "TIME UP";
-                timerDisplay.style.color = "#FF5555";
+                if (lastMode !== 'TIME_UP') {
+                    timerDisplay.innerHTML = "TIME UP";
+                    timerDisplay.style.color = "#FF5555";
+                    timerDisplay.style.animation = 'none';
+                    lastMode = 'TIME_UP';
+                }
                 return;
             }
 
             // Restore spans if innerHTML was changed to "TIME UP"
             if (!document.getElementById('ct-h')) {
                 timerDisplay.innerHTML = `<span id="ct-h"></span>:<span id="ct-m"></span>:<span id="ct-s"></span>`;
+                spans.h = null;
+                spans.m = null;
+                spans.s = null;
             }
 
             spans.h = spans.h || document.getElementById('ct-h');
             spans.m = spans.m || document.getElementById('ct-m');
             spans.s = spans.s || document.getElementById('ct-s');
 
-            if (spans.h) {
-                const fmt = n => n.toString().padStart(2, '0');
+            if (spans.h && displayTime !== lastDisplayTime) {
                 spans.h.textContent = fmt(Math.floor(displayTime / 3600));
                 spans.m.textContent = fmt(Math.floor((displayTime % 3600) / 60));
                 spans.s.textContent = fmt(displayTime % 60);
+                lastDisplayTime = displayTime;
+            }
 
+            const nextMode = displayTime <= 59 ? 'DANGER' : 'NORMAL';
+            if (nextMode !== lastMode) {
                 timerDisplay.style.color = displayTime <= 59 ? '#FF4500' : '#FFD700';
                 timerDisplay.style.animation = displayTime <= 59 ? 'pulse 1s infinite' : 'none';
+                lastMode = nextMode;
             }
         } catch (e) { console.error("Timer update failed", e); }
     };
@@ -430,9 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme();
     injectGlobalHUD();
 
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    const excludedPages = ['index.html', 'displaycrew.html', 'login.html'];
-    if (!excludedPages.includes(currentPage) && !window.location.pathname.includes('timer.html')) {
+    const currentPage = getCurrentPage();
+    if (gameState.teamData && currentPage !== 'admin.html') {
+        syncStandingToCloud();
+        startPresenceHeartbeat();
+    }
+
+    if (!EXCLUDED_HUD_PAGES.has(currentPage) && !window.location.pathname.includes('timer.html')) {
         initClientTimer();
     }
 
@@ -446,9 +504,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.matchMedia("(pointer: fine)").matches) {
         const bgTargets = document.querySelectorAll('.bg-layer, .bg-moving, .ocean-bg, .scenery-bg, .bg-image, .background-layer, .bg-logical');
         const contentTargets = document.querySelectorAll('.content-wrapper, .wooden-container, .minecraft-panel, .logical-container');
+        const hasParallaxTargets = bgTargets.length > 0 || contentTargets.length > 0;
 
         let ticking = false;
-        document.addEventListener('mousemove', (e) => {
+        if (hasParallaxTargets) {
+            document.addEventListener('mousemove', (e) => {
             if (!ticking) {
                 requestAnimationFrame(() => {
                     const x = (e.clientX / window.innerWidth - 0.5);
@@ -459,7 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 ticking = true;
             }
-        }, { passive: true });
+            }, { passive: true });
+        }
     }
 
     // Link Interceptor
@@ -477,8 +538,22 @@ document.addEventListener('DOMContentLoaded', () => {
 const CLOUD_CONFIG = {
     endpoint: 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec',
     maxRetries: 3,
-    retryDelay: 2000 // Start with 2s delay
+    retryDelay: 2000, // Start with 2s delay
+    logFlushInterval: 4000,
+    maxBatchSize: 50,
+    maxQueuedLogs: 500
 };
+
+const CLOUD_EVENT_QUEUE_KEY = 'pirateCloudEventQueue';
+let cloudFlushTimer = null;
+let cloudFlushInFlight = false;
+let lastStandingSignature = '';
+let lastStandingSentAt = 0;
+let heartbeatTimer = null;
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /**
  * Robust fetch with exponential backoff for high concurrency
@@ -493,49 +568,166 @@ async function reliableFetch(payload, attempt = 1) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        // Success (or at least sent)
+        return true; // Sent (no-cors hides response details)
     } catch (e) {
         if (attempt <= CLOUD_CONFIG.maxRetries) {
             const delay = CLOUD_CONFIG.retryDelay * Math.pow(2, attempt - 1); // 2s, 4s, 8s
             console.warn(`Cloud sync busy (Attempt ${attempt}). Retrying in ${delay}ms...`);
-            setTimeout(() => reliableFetch(payload, attempt + 1), delay + (Math.random() * 500)); // Add jitter
+            await sleep(delay + (Math.random() * 500)); // Add jitter
+            return reliableFetch(payload, attempt + 1);
         } else {
             console.error('Cloud sync failed after max retries. Data queued locally.');
-            // Ideally, queue locally to retry later, but for now just log
+            return false;
+        }
+    }
+}
+
+function getQueuedCloudEvents() {
+    const queue = window.safeJSONParse(localStorage.getItem(CLOUD_EVENT_QUEUE_KEY), []);
+    return Array.isArray(queue) ? queue : [];
+}
+
+function setQueuedCloudEvents(events) {
+    localStorage.setItem(CLOUD_EVENT_QUEUE_KEY, JSON.stringify(events));
+}
+
+function enqueueCloudEvent(event) {
+    const queue = getQueuedCloudEvents();
+    queue.push(event);
+    if (queue.length > CLOUD_CONFIG.maxQueuedLogs) {
+        queue.splice(0, queue.length - CLOUD_CONFIG.maxQueuedLogs);
+    }
+    setQueuedCloudEvents(queue);
+}
+
+function scheduleCloudFlush(force = false) {
+    if (force) {
+        flushCloudEventQueue();
+        return;
+    }
+    if (cloudFlushTimer || cloudFlushInFlight) return;
+    cloudFlushTimer = setTimeout(() => {
+        cloudFlushTimer = null;
+        flushCloudEventQueue();
+    }, CLOUD_CONFIG.logFlushInterval);
+}
+
+async function flushCloudEventQueue() {
+    if (cloudFlushInFlight) return;
+    const queue = getQueuedCloudEvents();
+    if (queue.length === 0) return;
+
+    cloudFlushInFlight = true;
+    try {
+        const batch = queue.slice(0, CLOUD_CONFIG.maxBatchSize).map(event => ({
+            Timestamp: new Date(event.timestamp).toLocaleString(),
+            Type: event.type,
+            Category: event.crewId,
+            Device_ID: event.deviceId || clientMeta.deviceId,
+            Session_ID: event.sessionId || clientMeta.sessionId,
+            Page: event.page || (window.location.pathname.split('/').pop() || 'unknown'),
+            Raw: JSON.stringify(event)
+        }));
+
+        const ok = await reliableFetch({
+            action: 'BATCH_EVENTS',
+            events: batch
+        });
+
+        if (ok) {
+            const remaining = getQueuedCloudEvents().slice(batch.length);
+            setQueuedCloudEvents(remaining);
+        }
+    } finally {
+        cloudFlushInFlight = false;
+        if (getQueuedCloudEvents().length > 0) {
+            scheduleCloudFlush();
         }
     }
 }
 
 function syncToCloud(event) {
-    reliableFetch({
-        action: 'LOG_EVENT',
-        event: {
-            Timestamp: new Date(event.timestamp).toLocaleString(),
-            Type: event.type,
-            Category: event.crewId,
-            Raw: JSON.stringify(event)
-        }
-    });
+    enqueueCloudEvent(event);
+    scheduleCloudFlush();
+}
+
+function startPresenceHeartbeat() {
+    if (heartbeatTimer) return;
+    heartbeatTimer = setInterval(() => {
+        if (!gameState.teamData) return;
+        logGameEvent('HEARTBEAT', { page: window.location.pathname.split('/').pop() || 'unknown' });
+        syncStandingToCloud();
+    }, 25000);
 }
 
 const syncStandingToCloud = PiratesUtils.debounce(() => {
     if (!gameState.teamData) return;
 
+    // Gather L1 data from localStorage
+    let l1Timestamp = '-';
+    try {
+        const l1Data = JSON.parse(localStorage.getItem('pirateLevel1Data') || '{}');
+        const crewId = gameState.teamData.crewid;
+        if (l1Data[crewId]) l1Timestamp = l1Data[crewId];
+    } catch (e) { /* ignore */ }
+
+    // Gather L2 data from logs
+    let l2Status = '-';
+    try {
+        const logs = JSON.parse(localStorage.getItem('pirateAdminLogs') || '[]');
+        const crewId = gameState.teamData.crewid || gameState.teamData.id;
+        const hasSuccess = logs.some(l => l.crewId === crewId && l.type === 'VERIFY' && l.action === 'SUCCESS');
+        if (hasSuccess) l2Status = 'COMPLETE';
+    } catch (e) { /* ignore */ }
+
+    // Gather L3 session data
+    const session = gameState.level3Session || {};
+    const pathTrace = session.pathTrace || (gameState.journey ? gameState.journey.join('->') : '-');
+    const scanCount = session.scanCount || (gameState.journey ? gameState.journey.length : 0);
+
     const standing = {
         Rank: "-",
         CrewID: gameState.teamData.crewid,
         Name: gameState.teamData.crewname,
+        Device_ID: clientMeta.deviceId,
+        Session_ID: clientMeta.sessionId,
         Status: gameState.currentLevel >= 3 ? 'LEVEL_3_RACE' : (gameState.currentLevel === 2 ? 'LEVEL_2_CERTIFIED' : 'ACTIVE'),
-        Score_L1: "-",
-        Score_L2: "-",
-        Score_L3: (gameState.level3Session?.totalMarks || 0),
+        Score_L1: l1Timestamp,
+        Score_L2: l2Status,
+        Score_L3: (session.totalMarks || 0),
         Total_Points: (gameState.points || 0).toFixed(2),
-        Last_Seen: new Date().toLocaleTimeString()
+        Last_Seen: new Date().toLocaleTimeString(),
+        Path_Trace: pathTrace,
+        Scan_Count: scanCount,
+        Journey: gameState.journey ? gameState.journey.join(',') : '-'
     };
+
+    const signature = JSON.stringify(standing);
+    const now = Date.now();
+    if (signature === lastStandingSignature && (now - lastStandingSentAt) < 15000) return;
+
+    lastStandingSignature = signature;
+    lastStandingSentAt = now;
 
     reliableFetch({
         action: 'UPDATE_CREW',
         crewData: standing
     });
 }, 5000); // Increased debounce to 5s to reduce load
+
+window.addEventListener('pagehide', () => {
+    scheduleCloudFlush(true);
+    if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+    }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && gameState.teamData) {
+        syncStandingToCloud();
+        scheduleCloudFlush(true);
+    }
+});
+
 
