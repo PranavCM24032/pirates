@@ -3,11 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bounty Hunt - Logical Reasoning</title>
     <script>
         // Dynamic base path configuration for local & GitHub Pages compatibility
-        (function() {
+        (function () {
             const getBasePath = () => {
                 const href = window.location.href;
                 // Check if running on GitHub Pages
@@ -31,7 +31,7 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <style>
         * {
             margin: 0;
@@ -47,9 +47,7 @@
             -webkit-user-select: none;
             user-select: none;
         }
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
+
 
         html::-webkit-scrollbar,
         body::-webkit-scrollbar {

@@ -250,7 +250,7 @@ html {
 body {
     margin: 0;
     padding: 0;
-    width: 100vw;
+    width: 100%;
     height: 100dvh;
     /* Use dynamic viewport height */
     overflow: hidden;
@@ -265,6 +265,14 @@ body {
     transform-style: preserve-3d;
     /* Apply base page morph - snappier duration */
     animation: pageMorphIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Respect notches / rounded corners on mobile devices */
+body {
+    padding-top: env(safe-area-inset-top, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-left: env(safe-area-inset-left, 0);
 }
 
 /* --- LOGIN & PANEL UI SYSTEM --- */
@@ -353,9 +361,9 @@ body {
 /* Global HUD System (TV Channel Look) */
 .global-hud {
     position: fixed;
-    top: 20px;
-    left: 20px;
-    right: 20px;
+    top: calc(20px + env(safe-area-inset-top, 0));
+    left: calc(20px + env(safe-area-inset-left, 0));
+    right: calc(20px + env(safe-area-inset-right, 0));
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -385,6 +393,28 @@ body {
     pointer-events: auto;
     box-shadow: 0 0 15px rgba(255, 170, 0, 0.3);
     border-radius: 4px;
+    max-width: 70vw;
+    white-space: nowrap;
+}
+
+.hud-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    pointer-events: auto;
+}
+
+.crew-hud-id {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    color: #FFAA00;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 4px 8px;
+    border: 1px solid #5A2D0C;
+    border-radius: 4px;
+    margin-top: 4px;
+    text-shadow: 1px 1px 0 #000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
 /* Global Atmospheric Overlay */
@@ -801,6 +831,12 @@ body,
         width: 100%;
     }
 
+    .global-hud {
+        top: calc(10px + env(safe-area-inset-top, 0));
+        left: calc(10px + env(safe-area-inset-left, 0));
+        right: calc(10px + env(safe-area-inset-right, 0));
+    }
+
     /* Optimize animations for mobile */
     .move-cinematic {
         animation-duration: 80s !important;
@@ -831,6 +867,15 @@ body,
     .minecraft-btn {
         font-size: 0.75rem !important;
         padding: 8px 12px !important;
+    }
+
+    .tv-logo {
+        width: 110px;
+    }
+
+    .tv-timer {
+        font-size: 0.72rem;
+        padding: 8px 10px;
     }
 
     /* Reduce animation complexity on small screens */
@@ -890,6 +935,27 @@ body,
         font-size: 16px !important;
         /* Prevents zoom on iOS */
     }
+
+    * {
+        cursor: auto !important;
+    }
+}
+
+/* Override aggressive touch disabling from page-level "*" rules for interactive controls */
+a,
+button,
+input,
+select,
+textarea,
+label,
+[role="button"] {
+    touch-action: manipulation;
+}
+
+/* Smooth native scrolling on iOS for scrollable containers */
+.table-container,
+.viewport-container {
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ===== PERFORMANCE OPTIMIZATIONS ===== */

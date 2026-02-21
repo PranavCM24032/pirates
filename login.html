@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Crew Registration</title>
     <script>
@@ -32,7 +32,7 @@
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <style>
         /* RESET & BASE */
         * {
@@ -610,6 +610,7 @@
                 );
 
                 if (found) {
+                    // Reset gameplay-scoped state on every successful login to prevent cross-team bleed
                     Object.assign(gameState, {
                         teamData: {
                             crewid: found.crewid,
@@ -619,7 +620,14 @@
                             photo: found.bounty_photo,
                             verificationCredential: generateCred(found.crewid)
                         },
-                        currentLevel: level
+                        currentLevel: level,
+                        scanCount: 0,
+                        currentNode: null,
+                        targetNode: null,
+                        points: 0,
+                        level3Session: null,
+                        journey: [],
+                        jumps: []
                     });
 
                     saveGame();

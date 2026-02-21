@@ -60,6 +60,17 @@ window.safeJSONParse = PiratesUtils.safeJSONParse;
 
 const DATA_CACHE_PREFIX = 'pirate_json_cache_v1:';
 const inMemoryDataCache = new Map();
+const inFlightJSONRefresh = new Map();
+const PREFETCHED_URLS = new Set();
+let hasAttachedSmartPrefetch = false;
+
+function isNetworkConstrained() {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!conn) return false;
+    if (conn.saveData) return true;
+    const et = String(conn.effectiveType || '').toLowerCase();
+    return et.includes('2g') || et === 'slow-2g';
+}
 
 function buildCacheKey(url) {
     return `${DATA_CACHE_PREFIX}${url}`;
@@ -89,27 +100,111 @@ function setCachedRecord(url, data) {
     }
 }
 
+async function refreshJSONCache(url) {
+    const inflight = inFlightJSONRefresh.get(url);
+    if (inflight) return inflight;
+
+    const req = fetch(url, { cache: 'force-cache' })
+        .then(async (res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setCachedRecord(url, data);
+            return data;
+        })
+        .finally(() => {
+            inFlightJSONRefresh.delete(url);
+        });
+
+    inFlightJSONRefresh.set(url, req);
+    return req;
+}
+
 window.fetchJSONCached = async function (url, opts = {}) {
     const ttlMs = Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : 5 * 60 * 1000;
     const forceRefresh = !!opts.forceRefresh;
     const cached = getCachedRecord(url);
     const now = Date.now();
+    const isFresh = !!(cached && (now - cached.ts) <= ttlMs);
 
-    if (!forceRefresh && cached && (now - cached.ts) <= ttlMs) {
+    // Serve cached data immediately for responsiveness, refresh in background if stale.
+    if (!forceRefresh && cached) {
+        if (!isFresh) {
+            PiratesUtils.defer(() => {
+                refreshJSONCache(url).catch(() => { /* keep stale cache */ });
+            }, 50);
+        }
         return cached.data;
     }
 
     try {
-        const res = await fetch(url, { cache: 'force-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setCachedRecord(url, data);
-        return data;
+        return await refreshJSONCache(url);
     } catch (err) {
         if (cached && cached.data !== undefined) return cached.data;
         throw err;
     }
 };
+
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+
+    const scopeBase = window.BASE_PATH || '/';
+    const swUrl = `${scopeBase}sw.js`;
+    navigator.serviceWorker.register(swUrl, { scope: scopeBase }).catch((e) => {
+        console.warn('SW registration failed:', e);
+    });
+}
+
+function prefetchUrl(url) {
+    if (isNetworkConstrained() || (typeof navigator.onLine === 'boolean' && !navigator.onLine)) return;
+    if (!url || PREFETCHED_URLS.has(url)) return;
+    PREFETCHED_URLS.add(url);
+
+    try {
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = url;
+        link.as = url.endsWith('.json') ? 'fetch' : 'document';
+        document.head.appendChild(link);
+    } catch (e) {
+        // Ignore prefetch link issues and fallback to fetch warm-up below.
+    }
+
+    fetch(url, { cache: 'force-cache', credentials: 'same-origin' }).catch(() => { /* warm-up only */ });
+}
+
+function prefetchLikelyNextResources() {
+    if (document.hidden) return;
+    const currentPage = getCurrentPage();
+    const nextByPage = {
+        'index.html': ['displaycrew.html', 'crew.json', 'images/display.jpeg'],
+        'displaycrew.html': ['login.html', 'crew.json', 'images/login.jpeg'],
+        'login.html': ['qr.html', 'location.html', 'crew.json', 'graph.json', 'logical.json', 'meme.json'],
+        'qr.html': ['verification.html', 'location.html', 'meme.html', 'logical.html', 'meme.json', 'logical.json', 'graph.json'],
+        'verification.html': ['meme.html', 'logical.html', 'meme.json', 'logical.json'],
+        'logical.html': ['qr.html', 'logical.json'],
+        'location.html': ['celebration.html', 'graph.json']
+    };
+
+    const targets = nextByPage[currentPage] || [];
+    targets.forEach(prefetchUrl);
+}
+
+function attachSmartLinkPrefetch() {
+    if (hasAttachedSmartPrefetch) return;
+    hasAttachedSmartPrefetch = true;
+
+    const handler = (event) => {
+        if (isNetworkConstrained()) return;
+        const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+        if (!anchor) return;
+        if (anchor.target === '_blank') return;
+        if (anchor.origin !== window.location.origin) return;
+        prefetchUrl(anchor.href);
+    };
+
+    document.addEventListener('mouseover', handler, { passive: true });
+    document.addEventListener('touchstart', handler, { passive: true });
+}
 
 // GLOBAL GAME STATE
 const gameState = {
@@ -125,6 +220,20 @@ const gameState = {
 };
 
 window.gameState = gameState; // Export to window
+
+const BASE_STATE_KEY = 'pirateState';
+const CREW_STATE_PREFIX = 'pirateState:crew:';
+
+function getCrewIdFromState(stateObj = gameState) {
+    const team = stateObj && stateObj.teamData ? stateObj.teamData : null;
+    const raw = team ? (team.crewid || team.crewID || team.id) : '';
+    return String(raw || '').trim();
+}
+
+function getCrewStateKey(crewId) {
+    const clean = String(crewId || '').trim();
+    return clean ? `${CREW_STATE_PREFIX}${clean}` : '';
+}
 
 const CLIENT_META_KEYS = {
     deviceId: 'pirate_device_id',
@@ -154,7 +263,7 @@ window.PiratesClientMeta = clientMeta;
  * Initializes game state from localStorage
  */
 function initGame() {
-    const saved = localStorage.getItem('pirateState');
+    const saved = localStorage.getItem(BASE_STATE_KEY);
     if (saved) {
         const parsed = window.safeJSONParse(saved);
         if (parsed && typeof parsed === 'object') {
@@ -171,6 +280,29 @@ function initGame() {
             });
         }
     }
+
+    // Prefer crew-scoped state once identity is available.
+    const crewId = getCrewIdFromState(gameState);
+    if (!crewId) return;
+    const crewKey = getCrewStateKey(crewId);
+    if (!crewKey) return;
+
+    const crewSaved = localStorage.getItem(crewKey);
+    if (!crewSaved) return;
+    const crewParsed = window.safeJSONParse(crewSaved);
+    if (!crewParsed || typeof crewParsed !== 'object') return;
+
+    Object.assign(gameState, {
+        teamData: crewParsed.teamData || gameState.teamData || null,
+        currentLevel: parseInt(crewParsed.currentLevel, 10) || gameState.currentLevel || 1,
+        scanCount: parseInt(crewParsed.scanCount, 10) || 0,
+        currentNode: crewParsed.currentNode || null,
+        targetNode: crewParsed.targetNode || null,
+        points: parseInt(crewParsed.points, 10) || 0,
+        level3Session: crewParsed.level3Session || null,
+        journey: Array.isArray(crewParsed.journey) ? crewParsed.journey : [],
+        jumps: Array.isArray(crewParsed.jumps) ? crewParsed.jumps : []
+    });
 }
 
 /**
@@ -178,7 +310,19 @@ function initGame() {
  */
 function saveGame() {
     try {
-        localStorage.setItem('pirateState', JSON.stringify(gameState));
+        const crewId = getCrewIdFromState(gameState);
+        const crewKey = getCrewStateKey(crewId);
+
+        localStorage.setItem(BASE_STATE_KEY, JSON.stringify({
+            teamData: gameState.teamData || null,
+            currentLevel: parseInt(gameState.currentLevel, 10) || 1
+        }));
+
+        if (crewKey) {
+            localStorage.setItem(crewKey, JSON.stringify(gameState));
+        } else {
+            localStorage.setItem(BASE_STATE_KEY, JSON.stringify(gameState));
+        }
         // 🆕 SYNC STANDING TO CLOUD
         syncStandingToCloud();
     } catch (e) {
@@ -282,6 +426,8 @@ window.updateLevel3Session = function (fromNode, toNode, mark) {
                 avgScore: gameState.level3Session.avgScore,
                 pathTrace: gameState.level3Session.pathTrace
             });
+            // Push latest L3 standing immediately (debounced downstream)
+            syncStandingToCloud();
             return true;
         }
         return false;
@@ -447,10 +593,16 @@ function injectGlobalHUD() {
     const currentPage = getCurrentPage();
     if (EXCLUDED_HUD_PAGES.has(currentPage) || document.querySelector('.global-hud')) return;
 
+    const crewId = gameState.teamData ? (gameState.teamData.crewid || gameState.teamData.id) : null;
+    const crewHtml = crewId ? `<div class="crew-hud-id">ID: ${crewId}</div>` : '';
+
     const hud = document.createElement('div');
     hud.className = 'global-hud';
     hud.innerHTML = `
-        <a href="login.html"><img src="images/logo.png" alt="Bounty Pirates" class="tv-logo"></a>
+        <div class="hud-left">
+            <a href="login.html"><img src="images/logo.png" alt="Bounty Pirates" class="tv-logo"></a>
+            ${crewHtml}
+        </div>
         <div id="hud-timer-slot"></div>
     `;
     document.body.appendChild(hud);
@@ -565,8 +717,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.head.appendChild(sc);
     }, 180);
 
+    // Enable static caching on GitHub Pages / HTTPS contexts.
+    setTimeout(registerServiceWorker, 250);
+    setTimeout(() => {
+        prefetchLikelyNextResources();
+        attachSmartLinkPrefetch();
+    }, 320);
+
     // Parallax
-    if (window.matchMedia("(pointer: fine)").matches) {
+    const allowParallax = window.matchMedia("(pointer: fine)").matches &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
+        !isNetworkConstrained() &&
+        window.innerWidth >= 900;
+
+    if (allowParallax) {
         const bgTargets = document.querySelectorAll('.bg-layer, .bg-moving, .ocean-bg, .scenery-bg, .bg-image, .background-layer, .bg-logical');
         const contentTargets = document.querySelectorAll('.content-wrapper, .wooden-container, .minecraft-panel, .logical-container');
         const hasParallaxTargets = bgTargets.length > 0 || contentTargets.length > 0;
@@ -601,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===== 🆕 REAL-TIME CLOUD SYNC SYSTEM =====
 // ===== 🆕 REAL-TIME CLOUD SYNC SYSTEM (ROBUST FOR 70+ TEAMS) =====
 const CLOUD_CONFIG = {
-    endpoint: 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec',
+    endpoint: 'https://script.google.com/macros/s/AKfycbyNvbI4OHpyb6cd2hIURICcCeAWdjZEGJvqia4cRYd4FbImW2dNtJgVhKKan7vh_ca2/exec',
     maxRetries: 3,
     retryDelay: 2000, // Start with 2s delay
     logFlushInterval: 4000,
@@ -616,6 +780,15 @@ let lastStandingSignature = '';
 let lastStandingSentAt = 0;
 let heartbeatTimer = null;
 
+function getCloudEndpoint() {
+    try {
+        const configured = (localStorage.getItem('google_sheet_url') || '').trim();
+        return configured || CLOUD_CONFIG.endpoint;
+    } catch (e) {
+        return CLOUD_CONFIG.endpoint;
+    }
+}
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -624,16 +797,24 @@ function sleep(ms) {
  * Robust fetch with exponential backoff for high concurrency
  */
 async function reliableFetch(payload, attempt = 1) {
-    if (!CLOUD_CONFIG.endpoint) return;
+    const endpoint = getCloudEndpoint();
+    if (!endpoint) return;
 
     try {
-        await fetch(CLOUD_CONFIG.endpoint, {
+        const response = await fetch(endpoint, {
             method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
+            mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
         });
-        return true; // Sent (no-cors hides response details)
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const resultText = (await response.text() || '').trim();
+        if (/server busy|unknown action|^error[:\s]/i.test(resultText)) {
+            throw new Error(resultText || 'Cloud rejected request');
+        }
+        return true;
     } catch (e) {
         if (attempt <= CLOUD_CONFIG.maxRetries) {
             const delay = CLOUD_CONFIG.retryDelay * Math.pow(2, attempt - 1); // 2s, 4s, 8s
@@ -749,6 +930,8 @@ const syncStandingToCloud = PiratesUtils.debounce(() => {
     const session = gameState.level3Session || {};
     const pathTrace = session.pathTrace || (gameState.journey ? gameState.journey.join('->') : '-');
     const scanCount = session.scanCount || (gameState.journey ? gameState.journey.length : 0);
+    const lastScanNode = session.lastScanNode || gameState.currentNode || 'START';
+    const lastScanTime = session.lastScanTime ? new Date(session.lastScanTime).toLocaleTimeString() : new Date().toLocaleTimeString();
 
     const standing = {
         Rank: "-",
@@ -760,8 +943,12 @@ const syncStandingToCloud = PiratesUtils.debounce(() => {
         Score_L1: l1Timestamp,
         Score_L2: l2Status,
         Score_L3: (session.totalMarks || 0),
+        Internal_Marks: (session.totalMarks || 0),
+        Avg_Score: (session.avgScore || 0),
         Total_Points: (gameState.points || 0).toFixed(2),
         Last_Seen: new Date().toLocaleTimeString(),
+        Last_Scan: lastScanNode,
+        Last_Scan_Time: lastScanTime,
         Path_Trace: pathTrace,
         Scan_Count: scanCount,
         Journey: gameState.journey ? gameState.journey.join(',') : '-'
@@ -794,5 +981,3 @@ document.addEventListener('visibilitychange', () => {
         scheduleCloudFlush(true);
     }
 });
-
-

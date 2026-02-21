@@ -2,34 +2,60 @@
  * GOOGLE APPS SCRIPT: PROFESSIONAL MULTI-USER DATABASE
  * Optimized for 40+ Concurrent Teams via LockService
  */
+const TARGET_SPREADSHEET_ID = "17V6tx_JYPBQiQcsYWINs5cNtHd1PUgV9WnG4oHiLDCc";
+
+function getDatabaseSpreadsheet() {
+  return SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+}
 
 function doGet(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  ensureRequiredHeaders(ss);
-  const result = {
-    leaderboard: getSheetData(ss, "Leaderboard"),
-    logs: getSheetData(ss, "EventLogs"),
-    paths: getSheetData(ss, "PathAnalytics")
-  };
-  
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+    ensureRequiredHeaders(ss);
+    
+    // Use CacheService for better performance
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get('fullData');
+    
+    if (cached) {
+      return ContentService.createTextOutput(cached)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const result = {
+      leaderboard: getSheetData(ss, "Leaderboard"),
+      logs: getSheetData(ss, "EventLogs"),
+      paths: getSheetData(ss, "PathAnalytics"),
+      timestamp: new Date().toISOString()
+    };
+    
+    const jsonString = JSON.stringify(result);
+    cache.put('fullData', jsonString, 15); // Cache for 15 seconds
+    
+    return ContentService.createTextOutput(jsonString)
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      error: error.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function doPost(e) {
-  // 🔒 CRITICAL: Lock Service prevents "Race Conditions"
-  var lock = LockService.getScriptLock();
+  const lock = LockService.getScriptLock();
   
   try {
-    lock.waitLock(30000); 
-  } catch (e) {
-    return ContentService.createTextOutput("Server Busy: Try Again").setMimeType(ContentService.MimeType.TEXT);
-  }
+    if (!lock.tryLock(5000)) {
+      return ContentService.createTextOutput("Server busy")
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
 
-  try {
     const data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    ensureRequiredHeaders(ss);
+    const ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+    
+    // Clear cache on any POST to ensure fresh data
+    CacheService.getScriptCache().remove('fullData');
     
     // ACTION: RESET FULL GAME
     if (data.action === "RESET_GAME") {
@@ -39,40 +65,43 @@ function doPost(e) {
       setupHeaders(ss); // Restore headers
       return ContentService.createTextOutput("Game Reset Successful").setMimeType(ContentService.MimeType.TEXT);
     }
-    
-    // ACTION: BULK SYNC (Overwrite)
-    if (data.action === "BULK_SYNC") {
-      // If data is provided, overwrite. If not (or empty array), it clears.
-      // We must handle headers if data is empty.
-      
-      overwriteSheet(ss, "Leaderboard", data.tier1 || []);
-      overwriteSheet(ss, "PathAnalytics", data.tier2 || []);
-      overwriteSheet(ss, "EventLogs", data.tier3 || []);
-      
-      return ContentService.createTextOutput("Bulk Sync Successful").setMimeType(ContentService.MimeType.TEXT);
+
+    switch(data.action) {
+      case 'BULK_SYNC':
+        return handleBulkSync(ss, data);
+      case 'UPDATE_CREW':
+        return handleCrewUpdate(ss, data);
+      case 'BATCH_EVENTS':
+        return handleBatchEvents(ss, data);
+      case 'LOG_EVENT':
+        appendLine(ss, "EventLogs", data.event);
+        return ContentService.createTextOutput("Success");
+      default:
+        return ContentService.createTextOutput("Unknown action");
     }
-    
-    // TIER 1: Individual Crew Update
-    if (data.action === "UPDATE_CREW") {
-      updateCrewStanding(ss, data.crewData);
-    } 
-    // TIER 2: Event Logging
-    else if (data.action === "LOG_EVENT") {
-      appendLine(ss, "EventLogs", data.event);
-    }
-    // TIER 2B: Batched Event Logging
-    else if (data.action === "BATCH_EVENTS") {
-      appendLines(ss, "EventLogs", data.events || []);
-    }
-    
-    SpreadsheetApp.flush();
-    return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
-    
-  } catch (err) {
-    return ContentService.createTextOutput("Error: " + err.message).setMimeType(ContentService.MimeType.TEXT);
+  } catch (error) {
+    return ContentService.createTextOutput("Error: " + error.toString());
   } finally {
     lock.releaseLock();
   }
+}
+
+function handleBulkSync(ss, data) {
+  overwriteSheet(ss, "Leaderboard", data.tier1 || []);
+  overwriteSheet(ss, "PathAnalytics", data.tier2 || []);
+  appendLines(ss, "EventLogs", data.tier3 || []);
+  return ContentService.createTextOutput("Bulk sync successful");
+}
+
+function handleCrewUpdate(ss, data) {
+  updateCrewStanding(ss, data.crewData);
+  updateCrewPathAnalytics(ss, data.crewData);
+  return ContentService.createTextOutput("Crew updated");
+}
+
+function handleBatchEvents(ss, data) {
+  appendLines(ss, "EventLogs", data.events || []);
+  return ContentService.createTextOutput("Events logged");
 }
 
 // --- HELPERS ---
@@ -102,13 +131,13 @@ function clearSheet(ss, name) {
 
 function setupHeaders(ss) {
   let lb = getSheet(ss, "Leaderboard");
-  if (lb.getLastRow() === 0) lb.appendRow(["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Total_Points", "Last_Seen", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
+  if (lb.getLastRow() === 0) lb.appendRow(["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Avg_Score", "Total_Points", "Last_Seen", "Last_Scan", "Last_Scan_Time", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
   
   let el = getSheet(ss, "EventLogs");
   if (el.getLastRow() === 0) el.appendRow(["Timestamp", "Type", "Category", "Device_ID", "Session_ID", "Page", "Raw"]);
 
   let pa = getSheet(ss, "PathAnalytics");
-  if (pa.getLastRow() === 0) pa.appendRow(["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan"]);
+  if (pa.getLastRow() === 0) pa.appendRow(["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan", "Last_Scan_Time"]);
 }
 
 function getSheet(ss, name) {
@@ -161,11 +190,18 @@ function updateCrewStanding(ss, crew) {
   const lastRow = sheet.getLastRow();
   let rowIndex = -1;
   if (lastRow > 1) {
-    const ids = sheet.getRange(2, crewIdCol + 1, lastRow - 1, 1).getValues().flat();
-    rowIndex = ids.indexOf(String(crew.CrewID)) + 2;
+    const targetCrewId = String(crew.CrewID || '').trim();
+    const ids = sheet.getRange(2, crewIdCol + 1, lastRow - 1, 1)
+      .getValues()
+      .flat()
+      .map(v => String(v || '').trim());
+    rowIndex = ids.indexOf(targetCrewId) + 2;
   }
   
-  const rowData = headers.map(h => crew[h] || "");
+  const rowData = headers.map(h => {
+    const val = crew[h];
+    return (val === null || val === undefined) ? "" : val;
+  });
   
   if (rowIndex > 1) {
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
@@ -174,10 +210,55 @@ function updateCrewStanding(ss, crew) {
   }
 }
 
+function updateCrewPathAnalytics(ss, crew) {
+  if (!crew) return;
+  let sheet = getSheet(ss, "PathAnalytics");
+  if (sheet.getLastRow() === 0) setupHeaders(ss);
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const crewIdCol = headers.indexOf("CrewID");
+  if (crewIdCol === -1) return;
+
+  const crewId = String(crew.CrewID || '').trim();
+  if (!crewId) return;
+
+  const lastRow = sheet.getLastRow();
+  let rowIndex = -1;
+  if (lastRow > 1) {
+    const ids = sheet.getRange(2, crewIdCol + 1, lastRow - 1, 1)
+      .getValues()
+      .flat()
+      .map(v => String(v || '').trim());
+    rowIndex = ids.indexOf(crewId) + 2;
+  }
+
+  const mapped = {
+    CrewID: crewId,
+    Name: crew.Name || "",
+    Path: crew.Path_Trace || "",
+    Scans: crew.Scan_Count || 0,
+    Internal_Marks: (crew.Internal_Marks !== undefined && crew.Internal_Marks !== null) ? crew.Internal_Marks : (crew.Score_L3 || 0),
+    Avg_Score: crew.Avg_Score || 0,
+    Last_Scan: crew.Last_Scan || "",
+    Last_Scan_Time: crew.Last_Scan_Time || crew.Last_Seen || ""
+  };
+
+  const rowData = headers.map(h => {
+    const val = mapped[h];
+    return (val === null || val === undefined) ? "" : val;
+  });
+
+  if (rowIndex > 1) {
+    sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
+  } else {
+    sheet.appendRow(rowData);
+  }
+}
+
 function ensureRequiredHeaders(ss) {
-  ensureSheetHeaders(ss, "Leaderboard", ["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Total_Points", "Last_Seen", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
+  ensureSheetHeaders(ss, "Leaderboard", ["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Avg_Score", "Total_Points", "Last_Seen", "Last_Scan", "Last_Scan_Time", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
   ensureSheetHeaders(ss, "EventLogs", ["Timestamp", "Type", "Category", "Device_ID", "Session_ID", "Page", "Raw"]);
-  ensureSheetHeaders(ss, "PathAnalytics", ["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan"]);
+  ensureSheetHeaders(ss, "PathAnalytics", ["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan", "Last_Scan_Time"]);
 }
 
 function ensureSheetHeaders(ss, name, requiredHeaders) {
@@ -205,7 +286,10 @@ function appendLine(ss, name, row) {
   if (sheet.getLastRow() === 0) setupHeaders(ss);
   
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const data = headers.map(h => row[h] || "-"); 
+  const data = headers.map(h => {
+    const val = row[h];
+    return (val === null || val === undefined) ? "-" : val;
+  });
   sheet.appendRow(data);
 }
 
@@ -216,7 +300,10 @@ function appendLines(ss, name, rows) {
   if (sheet.getLastRow() === 0) setupHeaders(ss);
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const values = rows.map(row => headers.map(h => row[h] || "-"));
+  const values = rows.map(row => headers.map(h => {
+    const val = row[h];
+    return (val === null || val === undefined) ? "-" : val;
+  }));
   const startRow = sheet.getLastRow() + 1;
 
   sheet.getRange(startRow, 1, values.length, headers.length).setValues(values);

@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Treasure Scanner</title>
     <script>
@@ -31,7 +31,7 @@
     </script>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="global.js" defer></script>
     <style>
         * {
@@ -718,7 +718,7 @@
         <!-- Panel Wrapper -->
         <div class="panel-wrapper">
             <!-- Close Button (Positioned relative to wrapper) -->
-            <button class="close-btn" id="closeBtn" onclick="closeScanner()" style="display: none;">×</button>
+            <button class="close-btn" id="closeBtn" onclick="closeScanner()" style="display: none;">�</button>
 
             <!-- Wooden Panel -->
             <div class="wooden-panel">
@@ -808,16 +808,16 @@
         async function ensureLibraryLoaded() {
             if (typeof Html5Qrcode !== 'undefined') return true;
 
-            console.log('🔄 Attempting to lazy-load scanner library...');
+            console.log('?? Attempting to lazy-load scanner library...');
             return new Promise((resolve) => {
                 const script = document.createElement('script');
                 script.src = "https://unpkg.com/html5-qrcode/html5-qrcode.min.js";
                 script.onload = () => {
-                    console.log('✅ Library loaded via fallback');
+                    console.log('? Library loaded via fallback');
                     resolve(true);
                 };
                 script.onerror = () => {
-                    console.error('❌ Fallback library load failed');
+                    console.error('? Fallback library load failed');
                     resolve(false);
                 };
                 document.head.appendChild(script);
@@ -868,8 +868,14 @@
         let initialPinchZoom = null;
 
         window.onload = async function () {
-            console.log('🚀 Page Loading Initialization...');
+            console.log('?? Page Loading Initialization...');
             if (typeof initGame === 'function') initGame();
+
+            // QR page is Level 2 gameplay context
+            if (window.gameState && gameState.currentLevel !== 2) {
+                gameState.currentLevel = 2;
+                if (typeof saveGame === 'function') saveGame();
+            }
 
             // Wait for data to load before doing anything else
             await loadData();
@@ -887,7 +893,7 @@
             const closeBtn = document.getElementById('closeBtn');
             if (closeBtn) closeBtn.style.display = 'none';
 
-            // 🆕 AUTO-DETECT URL PARAMETERS (memeid=, queid=, or node=)
+            // ?? AUTO-DETECT URL PARAMETERS (memeid=, queid=, or node=)
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const memeId = urlParams.get('memeid');
@@ -896,7 +902,7 @@
 
                 if (memeId || queId || nodeId) {
                     const finalId = (memeId || queId || nodeId).toUpperCase();
-                    console.log('📡 Auto-detected parameter:', finalId);
+                    console.log('?? Auto-detected parameter:', finalId);
 
                     // Show a quick "Checking..." feedback
                     const display = document.getElementById('target-display');
@@ -909,17 +915,17 @@
                     setTimeout(() => handleScanResult(finalId), 200);
                 }
             } catch (e) {
-                console.error('❌ Error processing URL parameters:', e);
+                console.error('? Error processing URL parameters:', e);
             }
         }
 
         async function openScanner() {
-            console.log('🔘 Scan Button Clicked');
+            console.log('?? Scan Button Clicked');
             processing = false;
 
             const isLoaded = await ensureLibraryLoaded();
             if (!isLoaded) {
-                alert('⚠️ SCANNER ERROR\n\nThe scanning library could not be loaded. Please check your internet connection or use Manual Override.');
+                alert('?? SCANNER ERROR\n\nThe scanning library could not be loaded. Please check your internet connection or use Manual Override.');
                 return;
             }
 
@@ -930,7 +936,7 @@
 
             if (!startView || !scannerArea) return;
 
-            console.log('🛠️ Transitioning UI to Scanner Mode...');
+            console.log('??? Transitioning UI to Scanner Mode...');
             startView.style.display = 'none';
             if (pirateSkull) pirateSkull.style.display = 'none';
             scannerArea.classList.add('active');
@@ -1034,7 +1040,7 @@
                     config.formatsToSupport = [window.Html5QrcodeSupportedFormats.QR_CODE];
                 }
 
-                console.log('📷 Starting camera sequence...');
+                console.log('?? Starting camera sequence...');
 
                 // Try rear camera first, fallback to any camera
                 try {
@@ -1043,7 +1049,7 @@
                         config,
                         handleScanResult
                     );
-                    console.log('✅ Rear camera started');
+                    console.log('? Rear camera started');
                 } catch (rearCameraError) {
                     console.log('Rear camera failed, trying any environment camera...', rearCameraError);
                     try {
@@ -1070,17 +1076,17 @@
                     video.style.objectFit = 'cover';
 
                     video.onloadedmetadata = () => {
-                        console.log('✅ Video loaded, resolution:', video.videoWidth, 'x', video.videoHeight);
+                        console.log('? Video loaded, resolution:', video.videoWidth, 'x', video.videoHeight);
                         if (typeof setupZoom === 'function') setupZoom(video);
                     };
                 }
 
-                console.log('✅ QR Scanner initialized successfully');
+                console.log('? QR Scanner initialized successfully');
 
             } catch (err) {
-                console.error("❌ Camera error:", err);
+                console.error("? Camera error:", err);
 
-                let errorMessage = "⚠️ Camera access failed\n\n";
+                let errorMessage = "?? Camera access failed\n\n";
                 if (err.name === 'NotAllowedError') {
                     errorMessage += "Camera permission denied. Please allow camera access and try again.";
                 } else if (err.name === 'NotFoundError') {
@@ -1111,7 +1117,7 @@
                 track = stream.getVideoTracks()[0];
                 if (track && track.getCapabilities) {
                     capabilities = track.getCapabilities();
-                    console.log('📷 Camera capabilities:', capabilities);
+                    console.log('?? Camera capabilities:', capabilities);
                 }
             }
 
@@ -1124,9 +1130,9 @@
                     await track.applyConstraints({
                         advanced: [{ zoom: zoomValue }]
                     });
-                    console.log('🔍 Zoom applied:', zoomValue);
+                    console.log('?? Zoom applied:', zoomValue);
                 } catch (err) {
-                    console.error('❌ Error applying zoom:', err);
+                    console.error('? Error applying zoom:', err);
                 }
             };
 
@@ -1177,9 +1183,9 @@
 
             // Log zoom support
             if (capabilities.zoom) {
-                console.log('✅ Hardware zoom supported:', capabilities.zoom);
+                console.log('? Hardware zoom supported:', capabilities.zoom);
             } else {
-                console.log('⚠️ Hardware zoom not supported, using CSS fallback');
+                console.log('?? Hardware zoom not supported, using CSS fallback');
             }
         }
 
@@ -1234,7 +1240,7 @@
             }
 
             // Accept compact tokens from plain text QR content
-            const directToken = decodedText.match(/\b([A-HJ]|M\d{1,2}|L\d{1,2}|END)\b/i);
+            const directToken = decodedText.match(/\b([A-Z]{1,2}|M\d{1,2}|L\d{1,2}|END)\b/i);
             if (directToken && directToken[1]) {
                 scannedId = directToken[1].toUpperCase();
             }
@@ -1248,32 +1254,48 @@
 
             try {
                 let scannedId = normalizeScannedId(decodedText);
-                console.log('🔍 Raw scanned input:', decodedText);
+                console.log('?? Raw scanned input:', decodedText);
 
-                console.log('📌 Final scanned ID:', scannedId);
+                console.log('?? Final scanned ID:', scannedId);
 
 
                 // 2. IMMEDIATE FEEDBACK
                 triggerFeedback();
 
                 // 3. DETECT INTENT: Check data sources
-                const isMapLocation = graphData?.location_names?.[scannedId];
+                const graphNodeKeys = Object.keys(graphData?.graph || {});
+                const graphNeighborKeys = Object.values(graphData?.graph || {}).flatMap(edges => Object.keys(edges || {}));
+                const knownLocations = Array.from(new Set([...graphNodeKeys, ...graphNeighborKeys]));
+                const isGraphNode = knownLocations.includes(scannedId);
+                const isMapLocation = graphData?.location_names?.[scannedId] || (isGraphNode ? scannedId : null);
                 const isMemeItem = (memeData || []).find(m => m.memid && m.memid.toUpperCase() === scannedId);
                 const isLogicItem = (logicalData || []).find(l => l.queid && l.queid.toUpperCase() === scannedId);
 
                 if (isMapLocation) {
-                    console.log("📍 Location Detected:", isMapLocation);
+                    console.log("?? Location Detected:", isMapLocation);
 
                     // --- PATH ENFORCEMENT ---
                     if (window.gameState && gameState.targetNode && scannedId !== gameState.targetNode) {
                         const targetName = graphData?.location_names?.[gameState.targetNode] || gameState.targetNode;
-                        alert(`❌ WRONG DESTINATION\n\nYour map points to: ${targetName}\nBut you scanned: ${isMapLocation}\n\nFollow the path on your map!`);
+                        alert(`? WRONG DESTINATION\n\nYour map points to: ${targetName}\nBut you scanned: ${isMapLocation}\n\nFollow the path on your map!`);
                         processing = false;
                         return;
                     }
 
-                    // Update Global State
+                    // Update Global State + Level 3 scoring sync (QR scanner path)
                     if (window.gameState) {
+                        const prevNode = gameState.currentNode || 'START';
+                        const edgeWeight = (graphData?.graph?.[prevNode]?.[scannedId]) || 0;
+
+                        // Keep level-3 session active when scanning map nodes from QR page
+                        if (gameState.currentLevel === 3 && !gameState.level3Session && typeof initLevel3Session === 'function') {
+                            initLevel3Session();
+                        }
+
+                        if (gameState.currentLevel === 3 && typeof updateLevel3Session === 'function') {
+                            updateLevel3Session(prevNode, scannedId, edgeWeight);
+                        }
+
                         gameState.currentNode = scannedId;
                         gameState.targetNode = null;
 
@@ -1292,7 +1314,7 @@
 
                 // --- LOGIC GATE 2: LEVEL 2 (Items) ---
                 if (isMemeItem || isLogicItem) {
-                    console.log("🏴☠️ Item Detected. Moving to Verification...");
+                    console.log("???? Item Detected. Moving to Verification...");
 
                     if (isMemeItem) {
                         localStorage.removeItem('lastScannedLogic');
@@ -1308,9 +1330,9 @@
                 }
 
                 // --- LOGIC GATE 3: INVALID CODE ---
-                console.warn('❌ Invalid code scanned:', scannedId);
-                console.log('📊 Available codes:', {
-                    locations: Object.keys(graphData?.location_names || {}),
+                console.warn('? Invalid code scanned:', scannedId);
+                console.log('?? Available codes:', {
+                    locations: knownLocations,
                     memes: (memeData || []).map(m => m.memid),
                     logical: (logicalData || []).map(l => l.queid)
                 });
@@ -1319,12 +1341,12 @@
                     ? "\n\nData not loaded. Serve this app with localhost and refresh."
                     : "";
 
-                alert(`❌ SIGNAL NOT CAUGHT!\n\nScanned: "${scannedId}"\n\nThis is not a valid treasure code!\n\nValid formats:\n• Location: A, B, C, D, F, G, H, J\n• Meme: M1-M13\n• Logic: L1-L10${loadHint}\n\nTry scanning again!`);
+                alert(`? SIGNAL NOT CAUGHT!\n\nScanned: "${scannedId}"\n\nThis is not a valid treasure code!\n\nValid formats:\n� Location: graph nodes (A...KK)\n� Meme: M1-M13\n� Logic: L1-L10${loadHint}\n\nTry scanning again!`);
                 processing = false;
 
             } catch (err) {
-                console.error("❌ Critical Scan Error:", err);
-                alert(`⚠️ SCAN FAILED\n\nError: ${err.message}\n\nPlease try scanning again or use Manual Override.`);
+                console.error("? Critical Scan Error:", err);
+                alert(`?? SCAN FAILED\n\nError: ${err.message}\n\nPlease try scanning again or use Manual Override.`);
                 processing = false;
             }
         }

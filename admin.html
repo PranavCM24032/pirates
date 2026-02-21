@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <title>Bounty Pirates - Admin Command</title>
     <script>
         // Dynamic base path configuration for local & GitHub Pages compatibility
@@ -28,7 +28,7 @@
             window.BASE_PATH = basePath;
         })();
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -289,14 +289,14 @@
                 <!-- Footer -->
                 <div
                     class="px-4 py-2 bg-slate-950/80 border-t border-slate-800 text-[10px] text-slate-600 font-mono flex justify-between">
-                    <span>STATUS: MONITORING</span>
+                    <span id="syncStatus">STATUS: MONITORING</span>
                     <span id="lastUpdated">-</span>
-                    <span class="ml-4 text-slate-700">ID: ...WqF9t</span>
+                    <span id="syncSource" class="ml-4 text-slate-700">ID: ...WqF9t</span>
                 </div>
             </div>
         </div>
     </main>
-
+    </body>
     <!-- LOGIC -->
     <script>
         // --- CONSTANTS & STATE ---
@@ -305,6 +305,12 @@
             L1: 'pirateLevel1Data',
             MANUAL: 'pirateManualData'
         };
+        const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyNvbI4OHpyb6cd2hIURICcCeAWdjZEGJvqia4cRYd4FbImW2dNtJgVhKKan7vh_ca2/exec';
+
+        function getSheetUrl() {
+            const configured = (localStorage.getItem('google_sheet_url') || '').trim();
+            return configured || DEFAULT_SHEET_URL;
+        }
 
         // Utility: Safe HTML Escaping
         function escapeHTML(str) {
@@ -322,8 +328,29 @@
             l3Sessions: {}, // { crewId: { avgScore, totalMarks, scanCount, ... } }
             liveDevices: {}, // { crewId: { ids: Set<string>, lastSeen: number } }
             leaderboard: [],
-            currentTab: 'leaderboard'
+            currentTab: 'leaderboard',
+            syncMeta: { source: 'INIT', endpoint: getSheetUrl(), error: '' }
         };
+
+        function updateSyncMeta() {
+            const statusEl = document.getElementById('syncStatus');
+            const sourceEl = document.getElementById('syncSource');
+            if (!statusEl || !sourceEl) return;
+
+            const src = state.syncMeta || {};
+            if (src.source === 'CLOUD') {
+                statusEl.innerText = `STATUS: CLOUD SYNCED (${state.logs.length} logs / ${Object.keys(state.l3Sessions || {}).length} l3)`;
+                sourceEl.innerText = `SRC: ${src.endpoint}`;
+                return;
+            }
+            if (src.source === 'LOCAL') {
+                statusEl.innerText = 'STATUS: LOCAL FALLBACK';
+                sourceEl.innerText = `ERR: ${(src.error || 'sync failed').toString().slice(0, 70)}`;
+                return;
+            }
+            statusEl.innerText = 'STATUS: MONITORING';
+            sourceEl.innerText = 'ID: ...WqF9t';
+        }
 
         // Helper: Convert "HH:MM" to minutes from midnight
         function timeToMinutes(ts) {
@@ -447,127 +474,97 @@
 
         async function refreshData() {
             try {
-                // 🌐 FETCH FROM GOOGLE SHEET (Player → Sheet → Admin)
-                const sheetUrl = localStorage.getItem('google_sheet_url') || 'https://script.google.com/macros/s/AKfycbwh-wyhX1lw_qTS2AOq6Q4Z6q18ir8C0lyU5FahuDPDlpqBbB3bd3_q-rXShMMWqF9t/exec';
-                const response = await fetch(sheetUrl);
+                const sheetUrl = getSheetUrl();
+                console.log("Fetching from:", sheetUrl);
+                
+                // DON'T use no-cors mode for GET requests
+                const response = await fetch(sheetUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
                 const cloudData = await response.json();
+                
+                if (cloudData.error) {
+                    throw new Error(cloudData.error);
+                }
+                
+                console.log("Cloud data received:", cloudData);
+                
+                // Reset state
                 state.liveDevices = {};
-
-                // Map Google Sheet logs → parse the Raw JSON for full event objects
-                if (cloudData && cloudData.logs) {
+                state.l1Data = {}; // Clear to prevent stale data from persisting
+                state.l3Sessions = {}; // Clear to ensure fresh session data
+                state.syncMeta = { source: 'CLOUD', endpoint: sheetUrl };
+                
+                // Map logs
+                if (cloudData.logs && Array.isArray(cloudData.logs)) {
                     state.logs = cloudData.logs.map(log => {
-                        // Try to parse the full event from Raw field
                         let parsed = {};
-                        try { parsed = JSON.parse(log.Raw || '{}'); } catch (e) { /* ignore */ }
+                        try { 
+                            parsed = typeof log.Raw === 'string' ? JSON.parse(log.Raw) : {}; 
+                        } catch (e) { /* ignore */ }
+                        
                         const normalized = {
                             crewId: parsed.crewId || log.Category || 'UNKNOWN',
                             type: parsed.type || log.Type || 'UNKNOWN',
-                            timestamp: parsed.timestamp || log.Timestamp,
+                            timestamp: parsed.timestamp || log.Timestamp || Date.now(),
                             deviceId: parsed.deviceId || log.Device_ID || '',
                             sessionId: parsed.sessionId || log.Session_ID || '',
                             page: parsed.page || log.Page || '',
                             action: parsed.action || (log.Raw && log.Raw.includes('SUCCESS') ? 'SUCCESS' : 'UNKNOWN'),
-                            // Preserve extra fields from the raw event (mark, from, to, etc.)
                             ...parsed
                         };
-                        touchLiveDevice(normalized.crewId, normalized.deviceId, normalized.timestamp);
+                        
+                        if (normalized.crewId && normalized.crewId !== 'UNKNOWN') {
+                            touchLiveDevice(normalized.crewId, normalized.deviceId, normalized.timestamp);
+                        }
+                        
                         return normalized;
                     });
                 }
-
-                if (cloudData && cloudData.leaderboard) {
-                    if (!state.l3Sessions) state.l3Sessions = {};
-
-                    cloudData.leaderboard.forEach(row => {
-                        const crewId = row.CrewID;
-                        if (!crewId) return;
-
-                        // L1: Parse timestamp from cloud
-                        if (row.Score_L1 && row.Score_L1 !== '-') {
-                            state.l1Data[crewId] = row.Score_L1;
-                        }
-
-                        // L2: Parse completion status
-                        if (row.Score_L2 && row.Score_L2 === 'COMPLETE') {
-                            if (!state.manual[crewId]) state.manual[crewId] = {};
-                            if (!state.manual[crewId].l2) {
-                                state.manual[crewId].l2 = { timestamp: row.Last_Seen || '-', fails: 0 };
-                            }
-                        }
-
-                        // L3: Parse path, marks, scan count
-                        const l3Marks = parseFloat(row.Score_L3) || 0;
-                        const pathTrace = row.Path_Trace || '-';
-                        const scanCount = parseInt(row.Scan_Count) || 0;
-                        const lastSeen = row.Last_Seen || '-';
-                        const deviceId = row.Device_ID || '';
-
-                        if (l3Marks > 0 || pathTrace !== '-' || scanCount > 0) {
-                            state.l3Sessions[crewId] = {
-                                crewId: crewId,
-                                totalMarks: l3Marks,
-                                pathTrace: pathTrace,
-                                scanCount: scanCount,
-                                lastScanTime: lastSeen !== '-' ? new Date().getTime() : 0,
-                                avgScore: scanCount > 1 ? Math.round((l3Marks / (scanCount - 1)) * 100) / 100 : 0
-                            };
-                        }
-                        touchLiveDevice(crewId, deviceId, lastSeen);
-
-                        // Login status from cloud
-                        if (row.Status && row.Status !== 'ACTIVE') {
-                            if (!state.manual[crewId]) state.manual[crewId] = {};
-                            state.manual[crewId].login = true;
-                        }
-                    });
+                
+                // Process leaderboard
+                if (cloudData.leaderboard && Array.isArray(cloudData.leaderboard)) {
+                    processLeaderboardData(cloudData.leaderboard);
                 }
-
-                // Also merge path analytics if available
-                if (cloudData && cloudData.paths) {
-                    cloudData.paths.forEach(row => {
-                        const crewId = row.CrewID;
-                        if (!crewId) return;
-                        if (!state.l3Sessions[crewId]) {
-                            state.l3Sessions[crewId] = {
-                                crewId: crewId,
-                                totalMarks: parseInt(row.Internal_Marks) || 0,
-                                pathTrace: row.Path || '-',
-                                scanCount: parseInt(row.Scans) || 0,
-                                lastScanTime: row.Last_Scan ? new Date(row.Last_Scan).getTime() : 0,
-                                avgScore: parseFloat(row.Avg_Score) || 0
-                            };
-                        }
-                    });
+                
+                // Process paths
+                if (cloudData.paths && Array.isArray(cloudData.paths)) {
+                    processPathData(cloudData.paths);
                 }
-
-                console.log("✅ Synced from Google Sheet:", cloudData);
+                
+                // Success!
+                state.syncMeta.source = 'CLOUD';
+                
             } catch (error) {
-                console.warn("⚠️ Google Sheet sync failed, falling back to localStorage:", error);
-
+                console.error("Cloud sync failed:", error);
+                state.syncMeta = { 
+                    source: 'LOCAL', 
+                    endpoint: getSheetUrl(), 
+                    error: error.message 
+                };
+                
                 // Fallback to localStorage if sheet is unavailable
-                state.logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
-                state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
-                state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
-
-                state.l3Sessions = {};
-                state.liveDevices = {};
-                try {
-                    const l3All = JSON.parse(localStorage.getItem('level3_sessions') || '[]');
-                    l3All.forEach(session => {
-                        state.l3Sessions[session.crewId] = session;
-                    });
-                } catch (e) {
-                    console.warn("Failed to load L3 sessions:", e);
-                }
-                state.logs.forEach(log => touchLiveDevice(log.crewId, log.deviceId, log.timestamp));
+                loadFromLocalStorage();
             }
 
             // Ensure L3Sessions exists
             if (!state.l3Sessions) state.l3Sessions = {};
 
-            // Load manual overrides from localStorage (Admin-only edits)
-            state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
-            state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
+            // Merge admin-local overrides on top of synced data (don't discard cloud user data)
+            const localManual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
+            Object.keys(localManual).forEach(id => {
+                state.manual[id] = { ...(state.manual[id] || {}), ...(localManual[id] || {}) };
+            });
+            const localL1 = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
+            state.l1Data = { ...(state.l1Data || {}), ...localL1 };
 
             calculateScores();
             updateStats();
@@ -583,6 +580,7 @@
             }
 
             document.getElementById('lastUpdated').innerText = 'UPDATED: ' + new Date().toLocaleTimeString();
+            updateSyncMeta();
         }
 
         // --- CORE LOGIC ---
@@ -594,11 +592,11 @@
             }
 
             state.leaderboard = state.crews.map(crew => {
-                const id = crew.crewid;
+                const id = String(crew.crewid);
                 const mData = state.manual[id] || {};
 
                 // Login
-                const autoLogin = state.logs.some(l => l.crewId === id && l.type === 'LOGIN');
+                const autoLogin = state.logs.some(l => String(l.crewId) === id && l.type === 'LOGIN');
                 const isLoggedIn = autoLogin || !!mData.login;
 
                 // L1
@@ -606,7 +604,7 @@
                 // const l1Score = l1Ts ? 10 : 0; // Old L1 scoring
 
                 // L2
-                const l2Logs = state.logs.filter(l => l.crewId === id && l.type === 'VERIFY');
+                const l2Logs = state.logs.filter(l => String(l.crewId) === id && l.type === 'VERIFY');
                 const successLog = l2Logs.find(l => l.action === 'SUCCESS');
                 const autoSuccess = !!successLog;
                 const autoFails = l2Logs.filter(l => l.action === 'FAILURE').length;
@@ -652,10 +650,12 @@
                 let l3TotalWeight = parseInt(session.totalMarks) || 0;
                 let pathTrace = session.pathTrace || '-';
                 let lastScanTime = session.lastScanTime || 0;
+                let lastScanNode = session.lastScanNode || '-';
+                let l3AvgScore = parseFloat(session.avgScore) || 0;
 
                 // Reconstruct from logs if session is incomplete/missing
                 const l3Logs = state.logs
-                    .filter(l => l.crewId === id && (l.type === 'LEVEL3_SCAN' || l.type === 'LOCATION'))
+                    .filter(l => String(l.crewId) === id && (l.type === 'LEVEL3_SCAN' || l.type === 'LOCATION'))
                     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
                 if (l3Logs.length > 0) {
@@ -673,6 +673,10 @@
                     }
                     if (!lastScanTime) {
                         lastScanTime = new Date(l3Logs[l3Logs.length - 1].timestamp).getTime();
+                    }
+                    if (lastScanNode === '-' && pathTrace && pathTrace !== '-') {
+                        const nodes = pathTrace.split('->').filter(n => n.trim());
+                        if (nodes.length) lastScanNode = nodes[nodes.length - 1].trim();
                     }
                 }
 
@@ -718,8 +722,10 @@
                     l3Score: Math.round(l3Score * 10) / 10,
                     l3ScanCount: session.scanCount || l3Logs.length,
                     l3TotalWeight,
+                    l3AvgScore: Math.round(l3AvgScore * 100) / 100,
                     manualL3,
                     lastScanTime,
+                    lastScanNode,
                     pathTrace,
                     l2CompletionTime: l2time,
                     totalScore: Math.round((l1Score + l2Score + l3Score) * 10) / 10
@@ -729,9 +735,7 @@
 
         function updateStats() {
             if (state.leaderboard.length > 0) {
-                document.getElementById('topCrew').innerText = state.leaderboard[0].crewname;
-                document.getElementById('topScore').innerText = state.leaderboard[0].totalScore + " PTS";
-            }
+                document.getElementById('topCrew').innerText = 
             document.getElementById('activeTeams').innerText = state.leaderboard.filter(c => c.isLoggedIn).length;
         }
 
@@ -907,14 +911,16 @@
 
             } else if (state.currentTab === 'l3') {
                 // LEVEL 3: QR NODE SCANNING - ROSTER LOG
-                html = wrapperStart + header('0.8fr 1fr 1.5fr 2fr 0.8fr 1.2fr 1fr', 'STATUS', 'CREW ID', 'CREW NAME', 'PATH', 'LAST SCAN', 'TIMESTAMP', 'MARKS');
+                html = wrapperStart + header('0.8fr 1fr 1.5fr 2fr 0.8fr 0.8fr 0.9fr 1.2fr 1fr', 'STATUS', 'CREW ID', 'CREW NAME', 'PATH', 'LAST SCAN', 'SCANS', 'AVG', 'TIMESTAMP', 'MARKS');
                 html += data.map(d => {
                     const pathTrace = d.pathTrace || '-';
                     const marks = d.l3TotalWeight || 0;
+                    const scans = d.l3ScanCount || 0;
+                    const avg = d.l3AvgScore || 0;
                     const timestamp = d.lastScanTime ? new Date(d.lastScanTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
 
-                    let lastNode = '-';
-                    if (pathTrace && pathTrace !== '-') {
+                    let lastNode = d.lastScanNode || '-';
+                    if ((lastNode === '-' || !lastNode) && pathTrace && pathTrace !== '-') {
                         const nodes = pathTrace.split('->').filter(n => n.trim());
                         lastNode = nodes.length > 0 ? nodes[nodes.length - 1].trim() : '-';
                     }
@@ -924,12 +930,14 @@
                         ? 'bg-green-500/20 text-green-400 border-green-500/30'
                         : 'bg-red-500/20 text-red-400 border-red-500/30';
 
-                    return row('0.8fr 1fr 1.5fr 2fr 0.8fr 1.2fr 1fr', `
+                    return row('0.8fr 1fr 1.5fr 2fr 0.8fr 0.8fr 0.9fr 1.2fr 1fr', `
                         <div><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusClass}">${statusText}</span></div>
                         <div class="font-mono text-blue-400 font-bold">${d.crewid}</div>
                         <div class="text-white font-semibold">${d.crewname}</div>
                         <div class="font-mono text-slate-300 text-[10px] break-all leading-tight">${escapeHTML(pathTrace)}</div>
                         <div class="font-mono text-cyan-400 font-bold text-sm text-center">${escapeHTML(lastNode)}</div>
+                        <div class="font-mono text-slate-300 text-sm text-center">${scans}</div>
+                        <div class="font-mono text-amber-300 text-sm text-center">${avg}</div>
                         <div class="font-mono text-slate-400 text-xs text-center">${timestamp}</div>
                         <div class="font-mono font-bold text-green-400 text-lg text-center">${marks}</div>
                     `);
@@ -1015,7 +1023,7 @@
                     `);
                 }).join('') + wrapperEnd;
             } else if (state.currentTab === 'settings') {
-                const sheetUrl = localStorage.getItem('google_sheet_url') || 'https://script.google.com/macros/s/AKfycbyRzmRf3n3fb10FIeE3rkE-QsQztGJYjxjg7I-xrHTKQ97c4-YFeo24OHEm4yyb0pAS/exec';
+                const sheetUrl = getSheetUrl();
                 html = `
                     <div class="p-8 max-w-2xl mx-auto space-y-8 fade-in">
                         <div class="glass-panel p-6 rounded-2xl border-t-2 border-green-500">
@@ -1050,6 +1058,10 @@
                                 <button onclick="syncToSheets()" class="p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-slate-800 transition-all text-left">
                                     <div class="text-xs font-bold text-blue-400 uppercase mb-1">Global Sync</div>
                                     <div class="text-[10px] text-slate-500">Force immediate sync of all 3 tiers to cloud.</div>
+                                </button>
+                                <button onclick="testCloudConnection()" class="p-4 bg-emerald-900/20 border border-emerald-500/50 rounded-xl hover:bg-emerald-600/30 transition-all text-left">
+                                    <div class="text-xs font-bold text-emerald-400 uppercase mb-1">Cloud Test</div>
+                                    <div class="text-[10px] text-slate-500">Checks endpoint reachability and sends a probe event.</div>
                                 </button>
                                 <button onclick="resetFullGame()" class="p-4 bg-red-900/20 border border-red-500/50 rounded-xl hover:bg-red-600/40 transition-all text-left group">
                                     <div class="text-xs font-bold text-red-500 group-hover:text-white uppercase mb-1">🔥 GLOBAL ZERO RESET</div>
@@ -1103,7 +1115,7 @@
 
         function openGoogleSheet() {
             // Extract sheet ID from Google Apps Script URL
-            const endpoint = localStorage.getItem('google_sheet_url') || 'https://script.google.com/macros/s/AKfycbwrzsTKkmnabHNbEZTZrNHF84JsbAQtm-9OtL8IkmMgDbkYoOmPlfrvP74G3SusodU_/exec';
+            const endpoint = getSheetUrl();
 
             // Prompt user to enter Google Sheet ID or open in new window
             const sheetId = prompt("Enter your Google Sheet ID (found in the sheet URL after '/d/')\nOr leave blank to visit Google Sheets:", "");
@@ -1115,8 +1127,7 @@
         }
 
         async function pullFromSheets() {
-            const endpoint = localStorage.getItem('google_sheet_url');
-            if (!endpoint) return alert("Configure Endpoint first in Settings!");
+            const endpoint = getSheetUrl();
 
             const btn = document.getElementById('pullBtn');
             const icon = document.getElementById('pullIcon');
@@ -1163,8 +1174,7 @@
         }
 
         async function syncToSheets() {
-            const endpoint = localStorage.getItem('google_sheet_url');
-            if (!endpoint) return alert("Configure Endpoint first!");
+            const endpoint = getSheetUrl();
 
             const btn = document.getElementById('syncBtn');
             const icon = document.getElementById('syncIcon');
@@ -1178,13 +1188,17 @@
                     CrewID: d.crewid,
                     Name: d.crewname,
                     Status: d.l3TotalWeight > 0 ? 'LEVEL_3_RACE' : (d.l2Success ? 'LEVEL_2_CERTIFIED' : 'ACTIVE'),
-                    Score_L1: d.l1Score,
+                    Score_L1: d.l1Timestamp || '-',
                     Score_L2: d.l2Score,
                     Score_L3: d.l3TotalWeight || 0,
+                    Avg_Score: d.l3AvgScore || 0,
                     Total_Points: d.totalScore.toFixed(2),
                     Last_Seen: d.l1Timestamp || '-',
+                    Last_Scan: d.lastScanNode || '-',
+                    Last_Scan_Time: d.lastScanTime ? new Date(d.lastScanTime).toLocaleTimeString() : '-',
                     Path_Trace: d.pathTrace || '-',
-                    Scan_Count: d.l3ScanCount || 0
+                    Scan_Count: d.l3ScanCount || 0,
+                    Device_ID: d.deviceId || ''
                 }));
 
                 // TIER 2: Path Analytics (L3 Specific)
@@ -1197,12 +1211,13 @@
                         Scans: s.scanCount || d.l3ScanCount || 0,
                         Internal_Marks: s.totalMarks || d.l3TotalWeight || 0,
                         Avg_Score: (s.avgScore || 0).toFixed(2),
-                        Last_Scan: s.lastScanTime ? new Date(s.lastScanTime).toLocaleTimeString() : '-'
+                        Last_Scan: s.lastScanNode || d.lastScanNode || '-',
+                        Last_Scan_Time: s.lastScanTime ? new Date(s.lastScanTime).toLocaleTimeString() : '-'
                     };
                 });
 
                 // TIER 3: Raw Action Logs
-                const logData = state.logs.map(l => ({
+                const logData = state.logs.slice(-50).map(l => ({
                     Timestamp: new Date(l.timestamp).toLocaleString(),
                     Type: l.type,
                     Category: l.crewId,
@@ -1212,23 +1227,25 @@
                     Raw: JSON.stringify(l)
                 }));
 
-                await fetch(endpoint, {
+                const response = await fetch(endpoint, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'BULK_SYNC',
                         tier1: leaderboardData,
                         tier2: pathData,
                         tier3: logData,
-                        uploadedAt: new Date().toISOString()
                     })
                 });
 
-                alert("BULK SYNC COMPLETE!\nFull database backup finished.");
+                const text = await response.text();
+                console.log("Sync response:", text);
+                
+                alert("✅ Sync complete!");
+                await refreshData(); // Refresh to get latest
             } catch (e) {
                 console.error(e);
-                alert("SYNC FAILED!");
+                alert("❌ Sync failed: " + e.message);
             } finally {
                 if (btn) btn.disabled = false;
                 if (icon) icon.classList.remove('animate-spin');
@@ -1252,6 +1269,32 @@
             };
             localStorage.setItem('pirate_timer_command', JSON.stringify(cmd));
             setTimeout(refreshData, 100);
+        }
+
+        async function testCloudConnection() {
+            const endpoint = getSheetUrl();
+            console.log("Testing connection to:", endpoint);
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const text = await response.text();
+                console.log("Raw response:", text.substring(0, 200));
+                
+                try {
+                    const data = JSON.parse(text);
+                    console.log("Parsed data:", data);
+                    alert(`✅ Connection OK!\nLeaderboard: ${data.leaderboard?.length || 0} entries\nLogs: ${data.logs?.length || 0}`);
+                } catch (e) {
+                    alert("❌ Response is not valid JSON. Check your Apps Script deployment.");
+                }
+            } catch (e) {
+                console.error("Connection test failed:", e);
+                alert("❌ Connection failed: " + e.message);
+            }
         }
 
         function clearClientPathState() {
@@ -1407,8 +1450,7 @@
                 const confirmation = prompt("Type 'DELETE' to confirm full reset:");
                 if (confirmation !== 'DELETE') return alert("Reset Cancelled.");
 
-                const endpoint = localStorage.getItem('google_sheet_url');
-                if (!endpoint) return alert("Error: No Google Sheet connected. Cannot reset server.");
+                const endpoint = getSheetUrl();
 
                 // UI Feedback
                 const btn = document.querySelector('button[onclick="resetFullGame()"]');
@@ -1592,7 +1634,92 @@
             input.style.borderColor = ''; // Reset
         };
 
-    </script>
-</body>
+        // --- HELPER FUNCTIONS FOR DATA PROCESSING ---
+        function processLeaderboardData(leaderboard) {
+            if (!leaderboard || !Array.isArray(leaderboard)) return;
+            
+            leaderboard.forEach(row => {
+                const crewId = row.CrewID;
+                if (!crewId) return;
+                
+                // L1 timestamp
+                if (row.Score_L1 && row.Score_L1 !== '-') {
+                    state.l1Data[crewId] = row.Score_L1;
+                }
+                
+                // L2 status
+                const l2Complete = row.Status === 'LEVEL_2_CERTIFIED' || 
+                                row.Status === 'LEVEL_3_RACE' ||
+                                row.Score_L2 === 'COMPLETE';
+                
+                if (l2Complete) {
+                    if (!state.manual[crewId]) state.manual[crewId] = {};
+                    if (!state.manual[crewId].l2) {
+                        state.manual[crewId].l2 = { 
+                            timestamp: row.Last_Seen || '-', 
+                            fails: 0 
+                        };
+                    }
+                }
+                
+                // L3 data
+                const l3Marks = parseFloat(row.Score_L3) || 0;
+                if (l3Marks > 0 || row.Path_Trace !== '-') {
+                    state.l3Sessions[crewId] = {
+                        crewId: crewId,
+                        totalMarks: l3Marks,
+                        pathTrace: row.Path_Trace || '-',
+                        scanCount: parseInt(row.Scan_Count) || 0,
+                        lastScanNode: row.Last_Scan || '-',
+                        lastScanTime: row.Last_Scan_Time ? Date.parse(row.Last_Scan_Time) || 0 : 0,
+                        avgScore: parseFloat(row.Avg_Score) || 0
+                    };
+                }
+                
+                // Track live devices
+                if (row.Device_ID) {
+                    touchLiveDevice(crewId, row.Device_ID, row.Last_Seen);
+                }
+            });
+        }
 
+        function processPathData(paths) {
+            if (!paths || !Array.isArray(paths)) return;
+            
+            paths.forEach(row => {
+                const crewId = row.CrewID;
+                if (!crewId) return;
+                
+                const existing = state.l3Sessions[crewId] || { crewId };
+                state.l3Sessions[crewId] = {
+                    ...existing,
+                    totalMarks: parseInt(row.Internal_Marks) || existing.totalMarks || 0,
+                    pathTrace: row.Path || existing.pathTrace || '-',
+                    scanCount: parseInt(row.Scans) || existing.scanCount || 0,
+                    lastScanNode: row.Last_Scan || existing.lastScanNode || '-',
+                    lastScanTime: row.Last_Scan_Time ? Date.parse(row.Last_Scan_Time) || 0 : (existing.lastScanTime || 0),
+                    avgScore: parseFloat(row.Avg_Score) || existing.avgScore || 0
+                };
+            });
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                state.logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
+                state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
+                state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
+                
+                const l3All = JSON.parse(localStorage.getItem('level3_sessions') || '[]');
+                l3All.forEach(session => {
+                    state.l3Sessions[session.crewId] = session;
+                });
+                
+                state.logs.forEach(log => touchLiveDevice(log.crewId, log.deviceId, log.timestamp));
+            } catch (e) {
+                console.warn("Failed to load from localStorage:", e);
+            }
+        }
+
+
+</script>
 </html>

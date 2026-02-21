@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Minecraft Map Navigator - Pirate's Chart</title>
     <script>
         // Dynamic base path configuration for local & GitHub Pages compatibility
@@ -25,7 +25,7 @@
             window.BASE_PATH = basePath;
         })();
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="global.js" defer></script>
@@ -506,7 +506,7 @@
         // Point 1-6 & 9: Defensive Implementation of Core Functions
         if (!window.gameState) {
             window.gameState = {
-                currentNode: 'A',
+                currentNode: 'START',
                 journey: [],
                 jumps: [],
                 targetNode: null,
@@ -578,11 +578,59 @@
             setBaseMapVisible(true);
         }
 
+        function syncLevel3SessionFromJourney() {
+            if (!window.gameState || gameState.currentLevel !== 3) return;
+            if (!gameState.teamData) return;
+            if (!Array.isArray(gameState.journey) || gameState.journey.length === 0) return;
+
+            const crewId = String(gameState.teamData.crewid || gameState.teamData.id || '').trim();
+            if (!crewId) return;
+
+            if (!gameState.level3Session || String(gameState.level3Session.crewId || '') !== crewId) {
+                gameState.level3Session = {
+                    crewId,
+                    crewName: gameState.teamData.crewname || 'Unknown',
+                    loginTime: Date.now(),
+                    scannedNodes: [],
+                    pathTrace: '',
+                    totalMarks: 0,
+                    avgScore: 0,
+                    scanCount: 0,
+                    lastScanTime: 0,
+                    lastScanNode: null,
+                    completed: false
+                };
+            }
+
+            const nodes = gameState.journey.map(n => String(n || '').trim()).filter(Boolean);
+            if (nodes.length === 0) return;
+
+            const now = Date.now();
+            gameState.level3Session.scannedNodes = nodes.map((node, idx) => ({
+                node,
+                timestamp: now - ((nodes.length - idx) * 1000),
+                mark: 0
+            }));
+            gameState.level3Session.pathTrace = nodes.join('->');
+            gameState.level3Session.scanCount = nodes.length;
+            gameState.level3Session.lastScanNode = nodes[nodes.length - 1];
+            gameState.level3Session.lastScanTime = now;
+        }
+
         window.onload = function () {
             // Point 4: Path to graph.json is root-relative (Point 4)
             cacheUIElements();
             if (window.initGame) initGame();
             if (window.applyTheme) applyTheme();
+
+            // Location page is Level 3 gameplay. Ensure correct level/session for scoring and admin updates.
+            if (window.gameState) {
+                if (gameState.currentLevel !== 3) gameState.currentLevel = 3;
+                if (!gameState.level3Session && typeof window.initLevel3Session === 'function') {
+                    window.initLevel3Session();
+                }
+            }
+
             const urlNode = new URLSearchParams(window.location.search).get('node');
             if (urlNode) {
                 const scannedNode = urlNode.trim().toUpperCase();
@@ -590,25 +638,33 @@
 
                 // If starting fresh, enforce 'A' as the first move from 'start'
                 if (gameState.journey.length === 0) {
-                    const initialPos = gameState.currentNode || 'START';
+                    const initialPos = 'START';
                     if (scannedNode === 'A') {
                         gameState.journey = [initialPos, 'A'];
+                        gameState.jumps = [false];
                     } else if (scannedNode === 'START') {
                         gameState.journey = ['START'];
+                        gameState.jumps = [];
                     } else {
                         // Auto-bridge start -> A -> scannedNode if it's the very first action?
                         // Actually, following user's "start -> A" logic:
                         gameState.journey = ['START', 'A', scannedNode];
+                        gameState.jumps = [false, false];
                     }
                 } else if (gameState.journey[gameState.journey.length - 1] !== scannedNode) {
                     gameState.journey.push(scannedNode);
+                    if (!Array.isArray(gameState.jumps)) gameState.jumps = [];
+                    gameState.jumps.push(false);
                 }
                 gameState.currentNode = scannedNode;
+                syncLevel3SessionFromJourney();
                 if (window.saveGame) saveGame();
             } else if (!gameState.currentNode) {
                 // DEFAULT STARTING POINT
                 gameState.currentNode = 'START';
                 gameState.journey = [];
+                gameState.jumps = [];
+                syncLevel3SessionFromJourney();
                 if (window.saveGame) saveGame();
             }
             const loader = window.fetchJSONCached
@@ -731,16 +787,20 @@
                 nodeId = decodedText.split('node=')[1].split('&')[0].toUpperCase();
             }
 
-            const prevNode = gameState.currentNode || 'START';
+            const isFreshStart = !Array.isArray(gameState.journey) || gameState.journey.length === 0;
+            const prevNode = (isFreshStart && (gameState.currentNode === 'A' || !gameState.currentNode))
+                ? 'START'
+                : (gameState.currentNode || 'START');
 
             // Check if this is a valid graph neighbor (for jump detection)
             const neighbors = graph?.graph?.[prevNode] || {};
-            const isNeighbor = nodeId in neighbors;
+            const isStartToA = prevNode === 'START' && nodeId === 'A';
+            const isNeighbor = isStartToA || (nodeId in neighbors);
             const isJump = !isNeighbor;
 
             if (window.playSound) window.playSound('success');
 
-            const isFirstMove = !gameState.journey || gameState.journey.length === 0;
+            const isFirstMove = isFreshStart;
             if (!Array.isArray(gameState.jumps)) gameState.jumps = [];
 
             if (isFirstMove) {
@@ -755,10 +815,10 @@
             window._lastScanWasJump = isJump;
 
             gameState.currentNode = nodeId;
-            saveGame();
 
             const weight = neighbors[nodeId] || 0;
             if (window.updateLevel3Session) window.updateLevel3Session(prevNode, nodeId, weight);
+            if (window.saveGame) saveGame();
 
             // Show jump toast if jumped
             if (isJump && prevNode !== 'START') {

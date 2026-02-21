@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Pirate Vault Verification</title>
     <script>
         // Dynamic base path configuration for local & GitHub Pages compatibility
@@ -648,18 +648,6 @@
 
 <body>
 
-    <!-- Global HUD: Logo (Left) + Timer (Right) -->
-    <div class="global-hud">
-        <a href="login.html">
-            <img src="images/logo.png" alt="Pirates of Minecraft" class="tv-logo">
-        </a>
-        <div id="hud-timer-slot">
-            <div id="client-timer-display" class="tv-timer" style="display: none;">
-                <span id="ct-h">00</span>:<span id="ct-m">00</span>:<span id="ct-s">00</span>
-            </div>
-        </div>
-    </div>
-
     <div class="background-layer move-cinematic"></div>
     <!-- Scanner sequence removed for constant panel display -->
 
@@ -696,7 +684,6 @@
         </div>
     </div>
 
-    <script src="global.js"></script>
     <script>
         // 1. Particle System
         function createParticles() {

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="view-transition" content="same-origin">
     <title>Bounty Pirates - Crew Registry</title>
     <script>
@@ -35,7 +35,7 @@
         href="https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English+SC&family=Crimson+Pro:wght@400;600&display=swap"
         rel="stylesheet">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
 
     <style>
         * {
@@ -236,6 +236,8 @@
             const tableBody = document.getElementById('crewTableBody');
             const searchInput = document.getElementById('searchInput');
             let allCrews = [];
+            let filteredCrews = [];
+            let searchRaf = null;
 
             // Helper to navigate with auto-fill data
             window.selectCrew = (name) => {
@@ -252,6 +254,7 @@
                 }
 
                 tableBody.innerHTML = '';
+                const fragment = document.createDocumentFragment();
                 crewsToRender.forEach((crew) => {
                     const members = crew.members?.length ? crew.members.join(', ') : 'No members listed';
                     const row = document.createElement('tr');
@@ -262,8 +265,9 @@
                         <td>${members}</td>
                     `;
                     row.classList.add('visible');
-                    tableBody.appendChild(row);
+                    fragment.appendChild(row);
                 });
+                tableBody.appendChild(fragment);
             }
 
             try {
@@ -280,15 +284,21 @@
                 ];
             }
 
-            renderCrews(allCrews);
+            allCrews = allCrews.map(c => ({
+                ...c,
+                members: Array.isArray(c.members) ? c.members : [],
+                _search: `${(c.crewname || '').toLowerCase()} ${(Array.isArray(c.members) ? c.members.join(' ') : '').toLowerCase()}`
+            }));
+            filteredCrews = allCrews;
+            renderCrews(filteredCrews);
 
             searchInput.addEventListener('input', e => {
-                const q = e.target.value.toLowerCase();
-                const filtered = allCrews.filter(
-                    c => c.crewname.toLowerCase().includes(q) ||
-                        c.members.some(m => m.toLowerCase().includes(q))
-                );
-                renderCrews(filtered);
+                const q = e.target.value.toLowerCase().trim();
+                if (searchRaf) cancelAnimationFrame(searchRaf);
+                searchRaf = requestAnimationFrame(() => {
+                    filteredCrews = !q ? allCrews : allCrews.filter(c => c._search.includes(q));
+                    renderCrews(filteredCrews);
+                });
             });
         });
     </script>
