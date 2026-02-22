@@ -1,12 +1,5 @@
 [
-  {
-    "crewid": "101",
-    "crewname": "Char Pirates",
-    "password": "charpirates",
-    "captain": "Captain Dhanshree",
-    "members": ["Ashwajeet Ambade", "Tushar", "Vedant", "Krish"],
-    "bounty_photo": "Dhanshree Raut.jpeg"
-  },
+
   {
     "crewid": "102",
     "crewname": "Team ALPHA",
@@ -63,14 +56,7 @@
     "members": ["Manish Wanjari", "Yutika Manekar", "Mohit Somankar", "Aaditya Gudhniye"],
     "bounty_photo": "Shrushti Zod.jpeg"
   },
-  {
-    "crewid": "109",
-    "crewname": "Gold hunters",
-    "password": "Goldhunters@3467",
-    "captain": "Captain Shrushti Zod",
-    "members": ["Chanchal Nehete", "Suhani Mandpe", "Dhanashri Nagpure", "Manjiri Ladde"],
-    "bounty_photo": " Shrushti Zod.jpeg"
-  },
+
   {
     "crewid": "110",
     "crewname": "XHUNTER",
@@ -95,22 +81,8 @@
     "members": ["Aarhambh mankar", "Devdat Mahalle", "Archit Sahu", "Prashil dongre"],
     "bounty_photo": "Anushka Pawar.jpeg"
   },
-  {
-    "crewid": "113",
-    "crewname": "Team Elite",
-    "password": "Q9F6BTRE",
-    "captain": "Captain Anushka",
-    "members": ["Tanish Rangase", "vinit bodhe", "Tanvi ghared", "Yesh pedkan"],
-    "bounty_photo": "Anushka Pawar.jpeg"
-  },
-  {
-    "crewid": "114",
-    "crewname": "The Flying Dutchman",
-    "password": "102",
-    "captain": "Captain Neha",
-    "members": ["PRAVRUTTI JAIPURKAR", "ANUSHKA GUDADHE", "AKSHAY UNDIRWADE", "BHUMI PRAJAPATI"],
-    "bounty_photo": "Neha.jpeg"
-  },
+
+
   {
     "crewid": "115",
     "crewname": "The Black Pearl",
@@ -119,14 +91,7 @@
     "members": ["Ayush badwaik", "pranav paunikar", "gayatrividhate", "Ankit Bhisikar"],
     "bounty_photo": "Dhanshree Raut.jpeg"
   },
-  {
-    "crewid": "116",
-    "crewname": "Queen Anne's Revenge",
-    "password": "103",
-    "captain": "Captain Shrushti Zod",
-    "members": ["AMRUTA KHADSE", "AMRUTA KHADSE", "ARYAN NAGMOTE", "JANVI MANOJ AKHAND"],
-    "bounty_photo": "Shrushti Zod.jpeg"
-  },
+  
   {
     "crewid": "117",
     "crewname": "Diamond Seekers",
@@ -135,86 +100,18 @@
     "members": ["JATIN LANJEWAR", "ARYAN SONU PURI", "AYUSHI GODBOLE", "KHUSHI VINOD SHARMA"],
     "bounty_photo": "Yash & Dhanshree.jpeg"
   },
-  {
-    "crewid": "118",
-    "crewname": "Nether Raiders",
-    "password": "105",
-    "captain": "Captain Anushka",
-    "members": ["RISHI TANDULKAR", "DHANSHRI GAURKHEDE", "DEEPIKA ANIL CHAWHAN", "LAKSHANA MALVIYA"],
-    "bounty_photo": "Anushka Pawar.jpeg"
-  },
-  {
-    "crewid": "119",
-    "crewname": "Ocean Explorers",
-    "password": "106",
-    "captain": "Captain Neha",
-    "members": ["ADITI SUNIL MILMILE", "JAYESH GAJBHIYE", "NEHA NILESH CHETULE", "NEHA BAHURUPI"],
-    "bounty_photo": "Neha.jpeg"
-  },
-  {
-    "crewid": "120",
-    "crewname": "Redstone Pirates",
-    "password": "107",
-    "captain": "Captain Yash & Dhanshree",
-    "members": ["YASH DESHMUKH", "KASHISH THAKRE", "PALAK SINGH", "NISHA D. BAMBAL"],
-    "bounty_photo": "Yash & Dhanshree.jpeg"
-  },
-  {
-    "crewid": "121",
-    "crewname": "Ender Dragons",
-    "password": "108",
-    "captain": "Captain Dhanshree",
-    "members": ["PIYUSH MAHENDRA PATIL", "MUBASHSHIR RIZVI", "VANSHIKA BHOYAR", "PRARTHANA CHAVAN"],
-    "bounty_photo": "Dhanshree Raut.jpeg"
-  },
-  {
-    "crewid": "122",
-    "crewname": "Iron Golems",
-    "password": "109",
-    "captain": "Captain Shrushti Zod",
-    "members": ["PIYUSH NARESH PHULE", "NEESHA TABHANE", "SANKET SONTAKKE", "PUNYSHRI PUN"],
-    "bounty_photo": "Shrushti Zod.jpeg"
-  },
-  {
-    "crewid": "123",
-    "crewname": "Skeleton Archers",
-    "password": "110",
-    "captain": "Captain Anushka",
-    "members": ["CHANCHAL MANWATKAR", "PARUL NAKADE", "VIKRAM THAKUR", "ANUPAM TRIVEDI"],
-    "bounty_photo": "Anushka Pawar.jpeg"
-  },
-  {
-    "crewid": "124",
-    "crewname": "Creeping Creepers",
-    "password": "111",
-    "captain": "Captain Yash & Dhanshree",
-    "members": ["ROHIT KASHYAP", "SUJAL KAWALE", "PRIYANKA ELESH GHEDAM", "NANDINI VINAY JAISWAL"],
-    "bounty_photo": "Yash & Dhanshree.jpeg"
-  },
-  {
-    "crewid": "125",
-    "crewname": "Zombie Horde",
-    "password": "112",
-    "captain": "Captain Neha",
-    "members": ["OJASWI HIWRALE", "SEJAL SHRIVAS", "JAMAL SHAHID", "SHREYASH SANJAY AMLU"],
-    "bounty_photo": "Neha.jpeg"
-  },
+
+ 
+
   {
     "crewid": "126",
     "crewname": "Spider Riders",
     "password": "113",
     "captain": "Captain Shrushti Zod",
-    "members": ["SUMIT GUPTA", "SHAFIN RIYAJ PATEL", "ASHWINI SIRSAT", "SIDDHI DILIP BAMNOTE"],
+    "members": ["Sumit", "Anupam", "Roshan", "Swanand"],
     "bounty_photo": "Shrushti Zod.jpeg"
   },
-  {
-    "crewid": "127",
-    "crewname": "Phantom Flyers",
-    "password": "114",
-    "captain": "Captain Dhanshree",
-    "members": ["SWANAND BARVE", "SHIVAM KAUSHIK", "CHANCHAL MANWATKAR", "MANDAR VAIDYA"],
-    "bounty_photo": "Dhanshree Raut.jpeg"
-  },
+ 
   {
     "crewid": "128",
     "crewname": "Witch's Brew",
@@ -223,36 +120,15 @@
     "members": ["SHRUTI AKSHAY BHABHUT", "MANJIRI LADDE", "AYUSH MANOJ KEDAR", "KARTIKA DHANULKAR"],
     "bounty_photo": "Anushka Pawar.jpeg"
   },
-  {
-    "crewid": "129",
-    "crewname": "Slime Squishers",
-    "password": "116",
-    "captain": "Captain Shrushti Zod",
-    "members": ["NAMRATA DILIP SHENDE", "SHRUTI SHAHU", "PIYUSH NAGOSE", "ASHWINI SIRSAT"],
-    "bounty_photo": "Shrushti Zod.jpeg"
-  },
-  {
-    "crewid": "130",
-    "crewname": "Magma Cubes",
-    "password": "117",
-    "captain": "Captain Dhanshree",
-    "members": ["AYUSHI DASHRATH RAUT", "ADITYA KANGRE", "NIKITA BORKAR", "PRANJAL PARIHAR"],
-    "bounty_photo": "Dhanshree Raut.jpeg"
-  },
-  {
-    "crewid": "131",
-    "crewname": "Shulker Shelters",
-    "password": "118",
-    "captain": "Captain Yash & Dhanshree",
-    "members": ["RUCHIKA KOCHE", "VEDANT MYANAWAR", "SUMIT GUPTA", "DAMINI VIJAY FALKE"],
-    "bounty_photo": "Yash & Dhanshree.jpeg"
-  },
+ 
+
+
   {
     "crewid": "132",
     "crewname": "Drowned Mariners",
     "password": "119",
     "captain": "Captain Neha",
-    "members": ["DHRUV KUHITE", "IT25007", "PUJA THOTE", "SHAGUN HARINKHEDE"],
+    "members": ["shagun", "Taniskh", "piyush", "Namrata"],
     "bounty_photo": "Neha.jpeg"
   },
   {
@@ -260,15 +136,8 @@
     "crewname": "Villager Traders",
     "password": "120",
     "captain": "Captain Anushka",
-    "members": ["VISHESH SHRIKHANDE", "VEDANT PIPARHETE", "DEVASHREE ATALKAR", "SIMARJEET SINGH KALSI"],
+     "members": ["Vedant", "yash", "vinit", "VISHESH SHRIKHANDE"],
     "bounty_photo": "Anushka Pawar.jpeg"
-  },
-  {
-    "crewid": "134",
-    "crewname": "Ender Explorers",
-    "password": "pass122",
-    "captain": "Captain Dhanshree",
-    "members": ["Athrva Deorankar", "Nandini", "CD23063"],
-    "bounty_photo": "Dhanshree Raut.jpeg"
   }
+
 ]

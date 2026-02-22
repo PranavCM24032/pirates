@@ -12,13 +12,18 @@ function doGet(e) {
   try {
     const ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
     ensureRequiredHeaders(ss);
+    const timerState = getTimerState();
     
     // Use CacheService for better performance
     const cache = CacheService.getScriptCache();
     const cached = cache.get('fullData');
     
     if (cached) {
-      return ContentService.createTextOutput(cached)
+      const cachedObj = JSON.parse(cached);
+      cachedObj.timerState = timerState;
+      cachedObj.timestamp = new Date().toISOString();
+      cachedObj.serverNow = Date.now();
+      return ContentService.createTextOutput(JSON.stringify(cachedObj))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -26,7 +31,9 @@ function doGet(e) {
       leaderboard: getSheetData(ss, "Leaderboard"),
       logs: getSheetData(ss, "EventLogs"),
       paths: getSheetData(ss, "PathAnalytics"),
-      timestamp: new Date().toISOString()
+      timerState: timerState,
+      timestamp: new Date().toISOString(),
+      serverNow: Date.now()
     };
     
     const jsonString = JSON.stringify(result);
@@ -62,6 +69,7 @@ function doPost(e) {
       clearSheet(ss, "Leaderboard");
       clearSheet(ss, "EventLogs");
       clearSheet(ss, "PathAnalytics");
+      clearTimerState();
       setupHeaders(ss); // Restore headers
       return ContentService.createTextOutput("Game Reset Successful").setMimeType(ContentService.MimeType.TEXT);
     }
@@ -76,6 +84,9 @@ function doPost(e) {
       case 'LOG_EVENT':
         appendLine(ss, "EventLogs", data.event);
         return ContentService.createTextOutput("Success");
+      case 'SET_TIMER_STATE':
+        setTimerState(data.state || {});
+        return ContentService.createTextOutput("Timer state updated");
       default:
         return ContentService.createTextOutput("Unknown action");
     }
@@ -259,6 +270,31 @@ function ensureRequiredHeaders(ss) {
   ensureSheetHeaders(ss, "Leaderboard", ["Rank", "CrewID", "Name", "Status", "Score_L1", "Score_L2", "Score_L3", "Avg_Score", "Total_Points", "Last_Seen", "Last_Scan", "Last_Scan_Time", "Path_Trace", "Scan_Count", "Journey", "Device_ID", "Session_ID"]);
   ensureSheetHeaders(ss, "EventLogs", ["Timestamp", "Type", "Category", "Device_ID", "Session_ID", "Page", "Raw"]);
   ensureSheetHeaders(ss, "PathAnalytics", ["CrewID", "Name", "Path", "Scans", "Internal_Marks", "Avg_Score", "Last_Scan", "Last_Scan_Time"]);
+}
+
+function getTimerState() {
+  const raw = PropertiesService.getScriptProperties().getProperty('pirate_timer_state');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function setTimerState(state) {
+  const safeState = {
+    remaining: Number(state.remaining) || 0,
+    isRunning: !!state.isRunning,
+    isFinished: !!state.isFinished,
+    timestamp: Date.now(), // CRITICAL: Always use server time as the reference
+    updatedAt: new Date().toISOString()
+  };
+  PropertiesService.getScriptProperties().setProperty('pirate_timer_state', JSON.stringify(safeState));
+}
+
+function clearTimerState() {
+  PropertiesService.getScriptProperties().deleteProperty('pirate_timer_state');
 }
 
 function ensureSheetHeaders(ss, name, requiredHeaders) {

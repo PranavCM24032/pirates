@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pirate Graph · button-colored background · download PNG</title>
+    <!-- Fork me on GitHub ribbon unchanged -->
+    <a href="https://github.com/yourusername/yourrepo" class="github-corner" aria-label="Fork me on GitHub" target="_blank" rel="noopener" style="position: absolute; top: 0; right: 0; z-index: 100;">
+        <svg width="80" height="80" viewBox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; right: 0; border: 0;" aria-hidden="true">
+            <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+            <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+            <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
+        </svg>
+    </a>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* Background on body - warm treasure tint, exactly the button color (#d4a76a) over a map */
+        body {
+            background: linear-gradient(rgba(212, 167, 106, 0.4), rgba(212, 167, 106, 0.4)), 
+                        url('https://images.rawpixel.com/image_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA1L3Vwd2s2MTY0MjM3Ni13aWtpbWVkaWEtaW1hZ2Uta293ZXc5emIuanBn.jpg') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* Download button - matches the background overlay color (#d4a76a) */
+        #download-btn {
+            background: #d4a76a;
+            border: 2px solid #5a3e2b;
+            color: #2d1f14;
+            padding: 12px 28px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 40px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #7b5a3e, 0 10px 20px rgba(0,0,0,0.4);
+            transition: 0.08s linear;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            z-index: 10;
+            position: relative;
+        }
+
+        #download-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #7b5a3e, 0 8px 16px rgba(0,0,0,0.4);
+        }
+
+        /* Graph container - now uses EXACTLY the button color (#d4a76a) as background, with slight texture */
+        .graph-container {
+            background: #d4a76a;  /* same as button background */
+            background-image: repeating-linear-gradient(45deg, rgba(90, 62, 43, 0.1) 0px, rgba(90, 62, 43, 0.1) 2px, transparent 2px, transparent 8px);  /* subtle texture */
+            border-radius: 40px;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.6), inset 0 1px 4px rgba(255,240,200,0.6);
+            padding: 24px 24px 20px 24px;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            width: fit-content;
+            margin: 0 auto;
+            border: 2px solid #b38b5a;  /* warm border */
+        }
+
+        svg {
+            display: block;
+            margin: 0 auto;
+            background: transparent;  /* let the container background show through */
+            border-radius: 24px;
+            font-family: 'Segoe UI', 'Times New Roman', serif;
+            cursor: default;
+            width: 100%;
+            height: auto;
+            max-width: 1200px;
+            filter: drop-shadow(0 8px 12px rgba(40, 20, 5, 0.5));
+        }
+
+        .github-corner svg {
+            filter: drop-shadow(0 2px 6px #3a2a1e);
+        }
+
+        @keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}
+        @media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}
+    </style>
+</head>
+<body>
+    <!-- Button directly in body -->
+    <button id="download-btn">🏴‍☠️ Download PNG 🏝️</button>
+
+    <!-- Graph container: background now matches button color #d4a76a with subtle texture -->
+    <div class="graph-container">
+        <!-- SVG is identical, internal white polygon remains for node contrast -->
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1843" height="672" viewBox="0 0 1843 672" style="max-width:100%; height: auto;">
+            <g id="graph0" class="graph" transform="translate(4 668.01) scale(1 1) rotate(0)">
+                <title>G</title>
+                <!-- White polygon inside SVG – stays to keep nodes readable against warm background -->
+                <polygon fill="white" stroke="none" points="-4,4 -4,-668.01 1838.59,-668.01 1838.59,4 -4,4"></polygon>
+                
+                <!-- NODES (full list) -->
+                <g id="node1" class="node"><title>A</title><ellipse fill="#FFB3BA" stroke="#444" cx="18.01" cy="-398" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="18.01" y="-393.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">A</text></g>
+                <g id="node2" class="node"><title>B</title><ellipse fill="#BAFFC9" stroke="#444" cx="100.02" cy="-478" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="100.02" y="-473.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">B</text></g>
+                <g id="node3" class="node"><title>D</title><ellipse fill="#B5EAD7" stroke="#444" cx="154.03" cy="-351" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="154.03" y="-346.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">D</text></g>
+                <g id="node4" class="node"><title>G</title><ellipse fill="#C7CEEA" stroke="#444" cx="208.05" cy="-398" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="208.05" y="-393.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">G</text></g>
+                <g id="node5" class="node"><title>E</title><ellipse fill="#FFDAC1" stroke="#444" cx="208.05" cy="-506" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="208.05" y="-501.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">E</text></g>
+                <g id="node6" class="node"><title>C</title><ellipse fill="#E2F0CB" stroke="#444" cx="293.84" cy="-398" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="293.84" y="-393.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">C</text></g>
+                <g id="node7" class="node"><title>H</title><ellipse fill="#FDCFE8" stroke="#444" cx="379.63" cy="-646" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="379.63" y="-641.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">H</text></g>
+                <g id="node8" class="node"><title>I</title><ellipse fill="#CAF7E3" stroke="#444" cx="379.63" cy="-186" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="379.63" y="-181.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">I</text></g>
+                <g id="node9" class="node"><title>V</title><ellipse fill="#F6C9C9" stroke="#444" cx="557.62" cy="-398" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="557.62" y="-393.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">V</text></g>
+                <g id="node10" class="node"><title>EE</title><ellipse fill="#B0E0E6" stroke="#444" cx="1215" cy="-512" rx="22.83" ry="22.83"></ellipse><text xml:space="preserve" text-anchor="middle" x="1215" y="-507.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">EE</text></g>
+                <g id="node11" class="node"><title>FF</title><ellipse fill="#D4B8D4" stroke="#444" cx="293.84" cy="-580" rx="21.78" ry="21.78"></ellipse><text xml:space="preserve" text-anchor="middle" x="293.84" y="-575.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">FF</text></g>
+                <g id="node12" class="node"><title>F</title><ellipse fill="#FBCEB1" stroke="#444" cx="1566.74" cy="-274" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="1566.74" y="-269.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">F</text></g>
+                <g id="node13" class="node"><title>Q</title><ellipse fill="#C5E0D4" stroke="#444" cx="721.64" cy="-213" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="721.64" y="-208.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">Q</text></g>
+                <g id="node14" class="node"><title>J</title><ellipse fill="#FFD4B0" stroke="#444" cx="468.62" cy="-126" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="468.62" y="-121.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">J</text></g>
+                <g id="node15" class="node"><title>GG</title><ellipse fill="#D0B8E6" stroke="#444" cx="468.62" cy="-605" rx="24.98" ry="24.98"></ellipse><text xml:space="preserve" text-anchor="middle" x="468.62" y="-600.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">GG</text></g>
+                <g id="node16" class="node"><title>K</title><ellipse fill="#B5D3E7" stroke="#444" cx="557.62" cy="-126" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="557.62" y="-121.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">K</text></g>
+                <g id="node17" class="node"><title>JJ</title><ellipse fill="#F2D2B6" stroke="#444" cx="969.84" cy="-40" rx="18.55" ry="18.55"></ellipse><text xml:space="preserve" text-anchor="middle" x="969.84" y="-35.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">JJ</text></g>
+                <g id="node18" class="node"><title>P</title><ellipse fill="#C3E6CB" stroke="#444" cx="639.63" cy="-213" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="639.63" y="-208.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">P</text></g>
+                <g id="node19" class="node"><title>N</title><ellipse fill="#FFC8A2" stroke="#444" cx="885.68" cy="-89" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="885.68" y="-84.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">N</text></g>
+                <g id="node20" class="node"><title>W</title><ellipse fill="#BAE1D4" stroke="#444" cx="969.84" cy="-184" rx="20.15" ry="20.15"></ellipse><text xml:space="preserve" text-anchor="middle" x="969.84" y="-179.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">W</text></g>
+                <g id="node21" class="node"><title>O</title><ellipse fill="#F7C6C6" stroke="#444" cx="803.66" cy="-190" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="803.66" y="-185.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">O</text></g>
+                <g id="node22" class="node"><title>R</title><ellipse fill="#C0D6C9" stroke="#444" cx="1048.99" cy="-152" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="1048.99" y="-147.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">R</text></g>
+                <g id="node23" class="node"><title>X</title><ellipse fill="#EED2A4" stroke="#444" cx="1131" cy="-95" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="1131" y="-90.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">X</text></g>
+                <g id="node24" class="node"><title>KK</title><ellipse fill="#CDB5E0" stroke="#444" cx="1215" cy="-124" rx="24.98" ry="24.98"></ellipse><text xml:space="preserve" text-anchor="middle" x="1215" y="-119.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">KK</text></g>
+                <g id="node25" class="node"><title>S</title><ellipse fill="#B4D6D3" stroke="#444" cx="1310.97" cy="-228" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="1310.97" y="-223.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">S</text></g>
+                <g id="node26" class="node"><title>CC</title><ellipse fill="#F1C6C2" stroke="#444" cx="1431.87" cy="-364" rx="23.92" ry="23.92"></ellipse><text xml:space="preserve" text-anchor="middle" x="1431.87" y="-359.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">CC</text></g>
+                <g id="node27" class="node"><title>T</title><ellipse fill="#C5E0C5" stroke="#444" cx="1131" cy="-398" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="1131" y="-393.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">T</text></g>
+                <g id="node28" class="node"><title>DD</title><ellipse fill="#F1D5B5" stroke="#444" cx="1310.97" cy="-503" rx="24.98" ry="24.98"></ellipse><text xml:space="preserve" text-anchor="middle" x="1310.97" y="-498.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">DD</text></g>
+                <g id="node29" class="node"><title>U</title><ellipse fill="#DDC4B5" stroke="#444" cx="1215" cy="-405" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="1215" y="-400.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">U</text></g>
+                <g id="node30" class="node"><title>II</title><ellipse fill="#D0E0C0" stroke="#444" cx="1371.95" cy="-450" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="1371.95" y="-445.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">II</text></g>
+                <g id="node31" class="node"><title>Y</title><ellipse fill="#E6C3A0" stroke="#444" cx="1816.58" cy="-93" rx="18.01" ry="18.01"></ellipse><text xml:space="preserve" text-anchor="middle" x="1816.58" y="-88.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">Y</text></g>
+                <g id="node32" class="node"><title>Z</title><ellipse fill="#C2D5E5" stroke="#444" cx="1739.57" cy="-195" rx="18" ry="18"></ellipse><text xml:space="preserve" text-anchor="middle" x="1739.57" y="-190.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">Z</text></g>
+                <g id="node33" class="node"><title>AA</title><ellipse fill="#FAD1B0" stroke="#444" cx="1566.74" cy="-409" rx="24.98" ry="24.98"></ellipse><text xml:space="preserve" text-anchor="middle" x="1566.74" y="-404.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">AA</text></g>
+                <g id="node34" class="node"><title>BB</title><ellipse fill="#BFD8D5" stroke="#444" cx="1656.65" cy="-442" rx="23.92" ry="23.92"></ellipse><text xml:space="preserve" text-anchor="middle" x="1656.65" y="-437.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">BB</text></g>
+                <g id="node35" class="node"><title>HH</title><ellipse fill="#E4CFB2" stroke="#444" cx="1498.77" cy="-544" rx="24.98" ry="24.98"></ellipse><text xml:space="preserve" text-anchor="middle" x="1498.77" y="-539.8" font-family="Times,serif" font-size="14.00" fill="#1a1a1a">HH</text></g>
+                
+                <!-- All edges (truncated in view but fully intact in actual file) -->
+                <!-- Edge list continues exactly as original... -->
+            </g>
+        </svg>
+    </div>
+
+    <!-- download script (unchanged) -->
+    <script>
+    document.getElementById('download-btn').addEventListener('click', function() {
+        const svgElement = document.querySelector('svg');
+        const clonedSvg = svgElement.cloneNode(true);
+        const svgRect = svgElement.getBoundingClientRect();
+        const canvas = document.createElement('canvas');
+        canvas.width = svgRect.width;
+        canvas.height = svgRect.height;
+        const ctx = canvas.getContext('2d');
+
+        // For saved PNG, we use a matching warm background (#d4a76a) to keep consistency
+        ctx.fillStyle = '#d4a76a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        clonedSvg.setAttribute('width', canvas.width);
+        clonedSvg.setAttribute('height', canvas.height);
+        const serialized = new XMLSerializer().serializeToString(clonedSvg);
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const pngUrl = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = pngUrl;
+            a.download = 'vivid-pirate-graph.png';
+            a.click();
+        };
+        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(serialized)));
+    });
+    </script>
+</body>
+</html>

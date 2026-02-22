@@ -388,6 +388,24 @@
             refreshData();
             // Auto refresh every 5s
             setInterval(refreshData, 5000);
+
+            // Live Timer Tick for Admin Monitor
+            setInterval(() => {
+                if (state.currentTab === 'timer') {
+                    const el = document.getElementById('admin-timer-display');
+                    if (el) {
+                        const ts = JSON.parse(localStorage.getItem('pirate_timer_state') || '{}');
+                        if (!ts.timestamp) return;
+
+                        let displayTime = Number(ts.remaining) || 0;
+                        if (ts.isRunning) {
+                            const elapsed = Math.floor((Date.now() - ts.timestamp) / 1000);
+                            displayTime = Math.max(0, displayTime - elapsed);
+                        }
+                        el.innerText = formatSeconds(displayTime);
+                    }
+                }
+            }, 500);
         };
 
         function setTab(tab) {
@@ -501,6 +519,26 @@
                 }
 
                 console.log("Cloud data received:", cloudData);
+
+                // Sync Timer State
+                if (cloudData.timerState) {
+                    const remote = cloudData.timerState;
+                    const serverNow = Number(cloudData.serverNow) || Date.now();
+                    const elapsedSinceCapture = Math.floor((serverNow - remote.timestamp) / 1000);
+                    const correctedRemaining = Math.max(0, remote.remaining - (remote.isRunning ? elapsedSinceCapture : 0));
+
+                    const localSnapshot = {
+                        ...remote,
+                        remaining: correctedRemaining,
+                        timestamp: Date.now(),
+                        remoteTimestamp: remote.timestamp
+                    };
+
+                    const local = JSON.parse(localStorage.getItem('pirate_timer_state') || '{}');
+                    if (!local.timestamp || remote.timestamp > (local.remoteTimestamp || 0)) {
+                        localStorage.setItem('pirate_timer_state', JSON.stringify(localSnapshot));
+                    }
+                }
 
                 // Reset state
                 state.liveDevices = {};
@@ -974,7 +1012,7 @@
                             </div>
                             
                             <div class="flex items-center justify-center gap-6 py-4 bg-black/40 rounded-xl border border-slate-800">
-                                <div class="text-6xl font-mono font-bold text-white tracking-tighter">
+                                <div id="admin-timer-display" class="text-6xl font-mono font-bold text-white tracking-tighter">
                                     ${formatSeconds(timerState.remaining || 0)}
                                 </div>
                             </div>
@@ -1270,6 +1308,117 @@
             return `${h > 0 ? h.toString().padStart(2, '0') + ':' : ''}${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         }
 
+        function getTimerCloudEndpoint() {
+            try {
+                const configured = (localStorage.getItem('google_sheet_url') || '').trim();
+                if (configured) return configured;
+            } catch (e) { }
+            return 'https://script.google.com/macros/s/AKfycbyNvbI4OHpyb6cd2hIURICcCeAWdjZEGJvqia4cRYd4FbImW2dNtJgVhKKan7vh_ca2/exec';
+        }
+
+        async function syncTimerStateToCloud(state) {
+            try {
+                await fetch(getTimerCloudEndpoint(), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'SET_TIMER_STATE',
+                        state
+                    })
+                });
+            } catch (e) {
+                console.warn('Timer cloud sync failed:', e);
+            }
+        }
+
+        function getEffectiveRemaining(state, now = Date.now()) {
+            const remaining = Number(state.remaining) || 0;
+            if (!state.isRunning) return remaining;
+            const ts = Number(state.timestamp) || now;
+            const elapsed = Math.floor((now - ts) / 1000);
+            return Math.max(0, remaining - elapsed);
+        }
+
+        function applyTimerCommandLocally(action, data = {}) {
+            const now = Date.now();
+            let state = JSON.parse(localStorage.getItem('pirate_timer_state') || '{}');
+            if (!state || typeof state !== 'object') state = {};
+
+            const base = {
+                remaining: Math.max(0, Number(state.remaining) || 0),
+                isRunning: !!state.isRunning,
+                isFinished: !!state.isFinished,
+                timestamp: Number(state.timestamp) || now
+            };
+            const liveRemaining = getEffectiveRemaining(base, now);
+
+            if (action === 'INIT') {
+                const h = Math.max(0, parseInt(data.h, 10) || 0);
+                const m = Math.max(0, parseInt(data.m, 10) || 0);
+                const s = Math.max(0, parseInt(data.s, 10) || 0);
+                const total = (h * 3600) + (m * 60) + s;
+                const next = {
+                    remaining: total,
+                    isRunning: false,
+                    isFinished: false,
+                    timestamp: now
+                };
+                localStorage.setItem('pirate_timer_state', JSON.stringify(next));
+                syncTimerStateToCloud(next);
+                return;
+            }
+
+            if (action === 'TOGGLE') {
+                let next;
+                if (base.isRunning) {
+                    next = {
+                        remaining: liveRemaining,
+                        isRunning: false,
+                        isFinished: false,
+                        timestamp: now
+                    };
+                } else if (liveRemaining > 0) {
+                    next = {
+                        remaining: liveRemaining,
+                        isRunning: true,
+                        isFinished: false,
+                        timestamp: now
+                    };
+                } else {
+                    return;
+                }
+                localStorage.setItem('pirate_timer_state', JSON.stringify(next));
+                syncTimerStateToCloud(next);
+                return;
+            }
+
+            if (action === 'ADJUST') {
+                const delta = parseInt(data.delta, 10) || 0;
+                const adjusted = Math.max(0, liveRemaining + delta);
+                const next = {
+                    remaining: adjusted,
+                    isRunning: base.isRunning && adjusted > 0,
+                    isFinished: false,
+                    timestamp: now
+                };
+                localStorage.setItem('pirate_timer_state', JSON.stringify(next));
+                syncTimerStateToCloud(next);
+                return;
+            }
+
+            if (action === 'RESET') {
+                const next = {
+                    remaining: 0,
+                    isRunning: false,
+                    isFinished: false,
+                    timestamp: now
+                };
+                localStorage.setItem('pirate_timer_state', JSON.stringify(next));
+                syncTimerStateToCloud(next);
+            }
+        }
+
         function sendRemoteCommand(action, data = {}) {
             const cmd = {
                 action,
@@ -1278,6 +1427,7 @@
                 timestamp: Date.now()
             };
             localStorage.setItem('pirate_timer_command', JSON.stringify(cmd));
+            applyTimerCommandLocally(action, data);
             setTimeout(refreshData, 100);
         }
 

@@ -626,7 +626,7 @@ function applyTheme() {
     });
 }
 
-const EXCLUDED_HUD_PAGES = new Set(['index.html', 'displaycrew.html', 'login.html', 'admin.html', 'timer.html', 'meme.html']);
+const EXCLUDED_HUD_PAGES = new Set(['index.html', 'admin.html', 'timer.html', 'meme.html']);
 const getCurrentPage = () => window.location.pathname.split('/').pop() || 'index.html';
 
 // Global HUD
@@ -670,16 +670,88 @@ function initClientTimer() {
     const spans = { h: null, m: null, s: null };
     const fmt = n => n.toString().padStart(2, '0');
     let timerId = null;
+    let cloudPollId = null;
     let lastDisplayTime = null;
     let lastMode = '';
+    let cloudState = null;
+    let cloudInFlight = false;
+
+    function getTimerCloudEndpoint() {
+        try {
+            const configured = (localStorage.getItem('google_sheet_url') || '').trim();
+            if (configured) return configured;
+        } catch (e) { }
+        return CLOUD_CONFIG.endpoint;
+    }
+
+    function asTimerState(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const state = {
+            remaining: Math.max(0, Number(raw.remaining) || 0),
+            isRunning: !!raw.isRunning,
+            isFinished: !!raw.isFinished,
+            timestamp: Number(raw.timestamp) || 0,
+            remoteTimestamp: Number(raw.remoteTimestamp) || 0 // Added to track server-side freshness
+        };
+        if (!state.timestamp) return null;
+        return state;
+    }
+
+    function getBestTimerState(localState, remoteState) {
+        if (localState && remoteState) return (localState.timestamp >= remoteState.timestamp) ? localState : remoteState;
+        return localState || remoteState || null;
+    }
+
+    async function pollCloudTimerState() {
+        if (cloudInFlight) return;
+        cloudInFlight = true;
+        try {
+            const response = await fetch(getTimerCloudEndpoint(), {
+                method: 'GET',
+                mode: 'cors',
+                cache: 'no-store'
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            const remote = asTimerState(payload && payload.timerState);
+            const serverNow = Number(payload.serverNow) || (payload.timestamp ? new Date(payload.timestamp).getTime() : 0);
+
+            if (!remote || !serverNow) return;
+            cloudState = remote;
+
+            // DRIFT COMPENSATION:
+            // Instead of just storing remote, we convert it to a local snapshot.
+            // This ensures all users see the same 'remaining' time regardless of their own system clock.
+            const elapsedSinceCapture = Math.floor((serverNow - remote.timestamp) / 1000);
+            const correctedRemaining = Math.max(0, remote.remaining - (remote.isRunning ? elapsedSinceCapture : 0));
+
+            const localSnapshot = {
+                ...remote,
+                remaining: correctedRemaining,
+                timestamp: Date.now() // Use CURRENT client time for the new snapshot
+            };
+
+            const local = asTimerState(window.safeJSONParse(localStorage.getItem('pirate_timer_state'), null));
+            // Only update if it's a newer state from the cloud than what we have locally
+            if (!local || remote.timestamp > (local.remoteTimestamp || 0)) {
+                // We store the original server timestamp as remoteTimestamp to track 'freshness'
+                localSnapshot.remoteTimestamp = remote.timestamp;
+                localStorage.setItem('pirate_timer_state', JSON.stringify(localSnapshot));
+            }
+        } catch (e) {
+            // Keep local timer active when cloud fetch fails.
+        } finally {
+            cloudInFlight = false;
+        }
+    }
 
     const updateUI = () => {
         const rawState = localStorage.getItem('pirate_timer_state');
-        if (!rawState) return;
+        const localState = asTimerState(window.safeJSONParse(rawState, null));
+        const state = getBestTimerState(localState, cloudState);
+        if (!state) return;
 
         try {
-            const state = window.safeJSONParse(rawState, null);
-            if (!state) return;
             const now = Date.now();
             let displayTime = state.remaining;
 
@@ -728,10 +800,22 @@ function initClientTimer() {
         } catch (e) { console.error("Timer update failed", e); }
     };
 
-    timerId = setInterval(updateUI, 500); // 500ms is enough for a timer
+    timerId = setInterval(updateUI, 500);
+    cloudPollId = setInterval(pollCloudTimerState, 1500); // Faster polling for better sync
+    pollCloudTimerState();
     updateUI();
 
-    const cleanup = () => { if (timerId) clearInterval(timerId); };
+    // Listen for storage changes from other tabs to sync immediately
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'pirate_timer_state') {
+            updateUI();
+        }
+    });
+
+    const cleanup = () => {
+        if (timerId) clearInterval(timerId);
+        if (cloudPollId) clearInterval(cloudPollId);
+    };
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
 }

@@ -674,6 +674,39 @@
         };
 
         // --- Broadcasting ---
+        let lastCloudTimerSyncAt = 0;
+        let lastCloudTimerSignature = '';
+
+        function getTimerCloudEndpoint() {
+            try {
+                const configured = (localStorage.getItem('google_sheet_url') || '').trim();
+                if (configured) return configured;
+            } catch (e) { }
+            return 'https://script.google.com/macros/s/AKfycbyNvbI4OHpyb6cd2hIURICcCeAWdjZEGJvqia4cRYd4FbImW2dNtJgVhKKan7vh_ca2/exec';
+        }
+
+        async function syncTimerToCloud(state) {
+            try {
+                const now = Date.now();
+                const signature = JSON.stringify(state);
+                if (signature === lastCloudTimerSignature && (now - lastCloudTimerSyncAt) < 900) return;
+                lastCloudTimerSignature = signature;
+                lastCloudTimerSyncAt = now;
+
+                await fetch(getTimerCloudEndpoint(), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'SET_TIMER_STATE',
+                        state
+                    })
+                });
+            } catch (e) {
+                // Silent fail: local timer should continue even if cloud is unavailable.
+            }
+        }
+
         function broadcastTimer() {
             const state = {
                 remaining: timer.remaining,
@@ -682,6 +715,7 @@
                 timestamp: Date.now()
             };
             localStorage.setItem('pirate_timer_state', JSON.stringify(state));
+            syncTimerToCloud(state);
         }
 
         // Initialize Display
