@@ -28,6 +28,7 @@
     <script src="https://cdn.tailwindcss.com" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="style.css">
     <script src="global.js" defer></script>
 
     <style>
@@ -79,6 +80,7 @@
             background-color: #000;
             font-family: 'VT323', monospace;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100dvh;
@@ -290,25 +292,7 @@
             }
         }
 
-        /* Global HUD Override for TV Style */
-        .global-hud {
-            position: fixed !important;
-            top: 10px !important;
-            left: 10px !important;
-            right: auto !important;
-            width: auto !important;
-            z-index: 10000 !important;
-        }
 
-        .tv-logo {
-            width: 80px !important;
-            height: auto !important;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) !important;
-        }
-
-        body>img[src*="logo.png"]:not(.tv-logo) {
-            display: none !important;
-        }
 
         .mc-character {
             position: absolute;
@@ -416,6 +400,7 @@
 <body>
     <div class="background-layer" id="bgLayer"></div>
 
+    <div class="hud-spacer" style="height: 80px; width: 100%; flex-shrink: 0; position: relative; z-index: 10;"></div>
     <div class="mc-map-container">
         <div id="skull-sparrow" class="mc-character">
             <div class="mc-character-inner">
@@ -576,6 +561,7 @@
         function closeScannerView() {
             ui.scannerContainer?.classList.add('hidden');
             setBaseMapVisible(true);
+            document.querySelector('.global-hud')?.classList.remove('hidden');
         }
 
         function syncLevel3SessionFromJourney() {
@@ -611,7 +597,7 @@
                 timestamp: now - ((nodes.length - idx) * 1000),
                 mark: 0
             }));
-            gameState.level3Session.pathTrace = nodes.join('->');
+            gameState.level3Session.pathTrace = buildJourneyString();
             gameState.level3Session.scanCount = nodes.length;
             gameState.level3Session.lastScanNode = nodes[nodes.length - 1];
             gameState.level3Session.lastScanTime = now;
@@ -657,6 +643,7 @@
                     gameState.jumps.push(false);
                 }
                 gameState.currentNode = scannedNode;
+                window._canRedirectToCelebration = true; // Mark as fresh scan for redirect
                 syncLevel3SessionFromJourney();
                 if (window.saveGame) saveGame();
             } else if (!gameState.currentNode) {
@@ -725,7 +712,11 @@
             if (nodeId !== 'START') updateSparrowPos(nodeId);
 
             if (['F', 'X', 'Z'].includes(nodeId)) {
-                setTimeout(() => window.location.replace('celebration.html'), 1000);
+                // Only redirect if this update sequence was triggered by a new scan
+                if (window._canRedirectToCelebration) {
+                    window._canRedirectToCelebration = false; // Consume the flag
+                    setTimeout(() => window.location.replace('celebration.html'), 1000);
+                }
                 return;
             }
         }
@@ -741,6 +732,9 @@
         async function startScanner() {
             setBaseMapVisible(false);
             ui.scannerContainer?.classList.remove('hidden');
+            // Hide Global HUD to avoid overlap
+            document.querySelector('.global-hud')?.classList.add('hidden');
+
             html5QrCode = new Html5Qrcode("reader");
             const config = { fps: 20, qrbox: { width: 300, height: 300 }, aspectRatio: 1.0 };
             let started = false;
@@ -780,6 +774,7 @@
         function onScanSuccess(decodedText) {
             if (processing) return;
             processing = true;
+            window._canRedirectToCelebration = true; // Allow celebration redirect
             let nodeId = decodedText.trim().toUpperCase();
 
             // Handle parameterized URLs
@@ -792,6 +787,24 @@
                 ? 'START'
                 : (gameState.currentNode || 'START');
 
+            // Same-node rescan is not a jump and should not add path/marks again.
+            const isSameNode = nodeId === prevNode;
+            if (isSameNode) {
+                window._lastScanWasJump = false;
+                if (window.playSound) window.playSound('success');
+                if (html5QrCode) {
+                    html5QrCode.stop().then(() => {
+                        html5QrCode = null;
+                        showSuccess();
+                    }).catch(() => {
+                        showSuccess();
+                    });
+                } else {
+                    showSuccess();
+                }
+                return;
+            }
+
             // Check if this is a valid graph neighbor (for jump detection)
             const neighbors = graph?.graph?.[prevNode] || {};
             const isStartToA = prevNode === 'START' && nodeId === 'A';
@@ -801,11 +814,21 @@
             if (window.playSound) window.playSound('success');
 
             const isFirstMove = isFreshStart;
+
+            // STRICT FIRST-SCAN VALIDATION: Player MUST scan 'A' first.
+            if (isFirstMove && nodeId !== 'A') {
+                if (window.playSound) window.playSound('error');
+                alert("ACCESS DENIED: You must scan node 'A' to begin your journey!");
+                processing = false;
+                return;
+            }
+
             if (!Array.isArray(gameState.jumps)) gameState.jumps = [];
 
             if (isFirstMove) {
-                gameState.journey = [prevNode, nodeId];
-                gameState.jumps = [isJump];
+                // Now we know nodeId is 'A'
+                gameState.journey = [prevNode, 'A'];
+                gameState.jumps = [false];
             } else if (gameState.journey[gameState.journey.length - 1] !== nodeId) {
                 gameState.journey.push(nodeId);
                 gameState.jumps.push(isJump);

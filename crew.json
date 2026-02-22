@@ -1,601 +1,281 @@
 [
-    {
-        "crewid": "101",
-        "crewname": "The Black Pearl",
-        "password": "123",
-        "captain": "Captain Dhanshree \n &  Captain Yash",
-        "members": [
-            "First Mate Rohan",
-            "Navigator Arjun",
-            "Gunner Priya"
-        ],
-        "bounty_photo": "Yash & Dhanshree.png"
-    },
-    {
-        "crewid": "102",
-        "crewname": "The Flying Dutchman",
-        "password": "102",
-        "captain": "Captain Kalash Shrikhande",
-        "members": [
-            "Ankit",
-            "Suresh"
-        ],
-        "bounty_photo": "A.png"
-    },
-    {
-        "crewid": "103",
-        "crewname": "Queen Anne's Revenge",
-        "password": "pass103",
-        "captain": "Blackbeard",
-        "members": [
-            "Jack",
-            "Will",
-            "Elizabeth"
-        ],
-        "bounty_photo": "beard_photo.png"
-    },
-    {
-        "crewid": "104",
-        "crewname": "Diamond Seekers",
-        "password": "pass104",
-        "captain": "Miner Mike",
-        "members": [
-            "Steve",
-            "Alex",
-            "Noob"
-        ],
-        "bounty_photo": "diamond.png"
-    },
-    {
-        "crewid": "105",
-        "crewname": "Nether Raiders",
-        "password": "pass105",
-        "captain": "Piglin King",
-        "members": [
-            "Blaze",
-            "Ghast",
-            "Wither"
-        ],
-        "bounty_photo": "nether.png"
-    },
-    {
-        "crewid": "106",
-        "crewname": "Ocean Explorers",
-        "password": "pass106",
-        "captain": "Trident Tim",
-        "members": [
-            "Dolphin",
-            "Guardian",
-            "Squid"
-        ],
-        "bounty_photo": "ocean.png"
-    },
-    {
-        "crewid": "107",
-        "crewname": "Redstone Pirates",
-        "password": "pass107",
-        "captain": "Engineer Ed",
-        "members": [
-            "Lever",
-            "Piston",
-            "Repeater"
-        ],
-        "bounty_photo": "redstone.png"
-    },
-    {
-        "crewid": "108",
-        "crewname": "Ender Dragons",
-        "password": "pass108",
-        "captain": "Enderman Eric",
-        "members": [
-            "Pearlie",
-            "Teleport",
-            "Void"
-        ],
-        "bounty_photo": "ender.png"
-    },
-    {
-        "crewid": "109",
-        "crewname": "Iron Golems",
-        "password": "pass109",
-        "captain": "Metal Matt",
-        "members": [
-            "Rose",
-            "Ingot",
-            "Heavy"
-        ],
-        "bounty_photo": "iron.png"
-    },
-    {
-        "crewid": "110",
-        "crewname": "Skeleton Archers",
-        "password": "pass110",
-        "captain": "Bone Bow",
-        "members": [
-            "Arrow",
-            "Quiver",
-            "Rib"
-        ],
-        "bounty_photo": "skeleton.png"
-    },
-    {
-        "crewid": "111",
-        "crewname": "Creeping Creepers",
-        "password": "pass111",
-        "captain": "TNT Tom",
-        "members": [
-            "Boom",
-            "Sizz",
-            "Blast"
-        ],
-        "bounty_photo": "creeper.png"
-    },
-    {
-        "crewid": "112",
-        "crewname": "Zombie Horde",
-        "password": "pass112",
-        "captain": "Brainy Bill",
-        "members": [
-            "Rot",
-            "Green",
-            "Slow"
-        ],
-        "bounty_photo": "zombie.png"
-    },
-    {
-        "crewid": "113",
-        "crewname": "Spider Riders",
-        "password": "pass113",
-        "captain": "Web Wally",
-        "members": [
-            "Silk",
-            "Eight",
-            "Climb"
-        ],
-        "bounty_photo": "spider.png"
-    },
-    {
-        "crewid": "114",
-        "crewname": "Phantom Flyers",
-        "password": "pass114",
-        "captain": "Night Wing",
-        "members": [
-            "Swoop",
-            "Scream",
-            "Sky"
-        ],
-        "bounty_photo": "phantom.png"
-    },
-    {
-        "crewid": "115",
-        "crewname": "Witch's Brew",
-        "password": "pass115",
-        "captain": "Potion Pam",
-        "members": [
-            "Splash",
-            "Healing",
-            "Harm"
-        ],
-        "bounty_photo": "witch.png"
-    },
-    {
-        "crewid": "116",
-        "crewname": "Slime Squishers",
-        "password": "pass116",
-        "captain": "Sticky Stan",
-        "members": [
-            "Bounce",
-            "Jello",
-            "Greenish"
-        ],
-        "bounty_photo": "slime.png"
-    },
-    {
-        "crewid": "117",
-        "crewname": "Magma Cubes",
-        "password": "pass117",
-        "captain": "Hot Henry",
-        "members": [
-            "Lava",
-            "Fire",
-            "Burn"
-        ],
-        "bounty_photo": "magma.png"
-    },
-    {
-        "crewid": "118",
-        "crewname": "Shulker Shelters",
-        "password": "pass118",
-        "captain": "Boxy Ben",
-        "members": [
-            "Float",
-            "Lid",
-            "Purple"
-        ],
-        "bounty_photo": "shulker.png"
-    },
-    {
-        "crewid": "119",
-        "crewname": "Drowned Mariners",
-        "password": "pass119",
-        "captain": "Sunken Sam",
-        "members": [
-            "Coral",
-            "Shell",
-            "Trident"
-        ],
-        "bounty_photo": "drowned.png"
-    },
-    {
-        "crewid": "120",
-        "crewname": "Villager Traders",
-        "password": "pass120",
-        "captain": "Emerald Emmy",
-        "members": [
-            "Wheat",
-            "Bread",
-            "Map"
-        ],
-        "bounty_photo": "villager.png"
-    },
-    {
-        "crewid": "121",
-        "crewname": "Illager Raiders",
-        "password": "pass121",
-        "captain": "Vindicator Vic",
-        "members": [
-            "Axe",
-            "Banner",
-            "Ravager"
-        ],
-        "bounty_photo": "illager.png"
-    },
-    {
-        "crewid": "122",
-        "crewname": "Evoker Spirits",
-        "password": "pass122",
-        "captain": "Vex Val",
-        "members": [
-            "Fang",
-            "Magic",
-            "Totem"
-        ],
-        "bounty_photo": "evoker.png"
-    },
-    {
-        "crewid": "123",
-        "crewname": "Axolotl Army",
-        "password": "pass123",
-        "captain": "Pinky Paul",
-        "members": [
-            "Water",
-            "Mud",
-            "Blue"
-        ],
-        "bounty_photo": "axolotl.png"
-    },
-    {
-        "crewid": "124",
-        "crewname": "Bee Hive",
-        "password": "pass124",
-        "captain": "Honey Holly",
-        "members": [
-            "Sting",
-            "Flower",
-            "Wax"
-        ],
-        "bounty_photo": "bee.png"
-    },
-    {
-        "crewid": "125",
-        "crewname": "Goat Climbers",
-        "password": "pass125",
-        "captain": "Horn Harry",
-        "members": [
-            "Jump",
-            "Mountain",
-            "Scream"
-        ],
-        "bounty_photo": "goat.png"
-    },
-    {
-        "crewid": "126",
-        "crewname": "Panda Rollers",
-        "password": "pass126",
-        "captain": "Bamboo Bob",
-        "members": [
-            "Sleepy",
-            "Lazy",
-            "Hungry"
-        ],
-        "bounty_photo": "panda.png"
-    },
-    {
-        "crewid": "127",
-        "crewname": "Fox Runners",
-        "password": "pass127",
-        "captain": "Berrie Ben",
-        "members": [
-            "Sneak",
-            "Jump",
-            "Tail"
-        ],
-        "bounty_photo": "fox.png"
-    },
-    {
-        "crewid": "128",
-        "crewname": "Wolf Pack",
-        "password": "pass128",
-        "captain": "Doggo Dan",
-        "members": [
-            "Bone",
-            "Bark",
-            "Tame"
-        ],
-        "bounty_photo": "wolf.png"
-    },
-    {
-        "crewid": "129",
-        "crewname": "Parrot Pirates",
-        "password": "pass129",
-        "captain": "Polly Pete",
-        "members": [
-            "Seed",
-            "Fly",
-            "Mimic"
-        ],
-        "bounty_photo": "parrot.png"
-    },
-    {
-        "crewid": "130",
-        "crewname": "Turtle Travelers",
-        "password": "pass130",
-        "captain": "Scute Scott",
-        "members": [
-            "Egg",
-            "Beach",
-            "Shell"
-        ],
-        "bounty_photo": "turtle.png"
-    },
-    {
-        "crewid": "131",
-        "crewname": "Snow Golems",
-        "password": "pass131",
-        "captain": "Frosty Fred",
-        "members": [
-            "Pumpkin",
-            "Snowball",
-            "Cold"
-        ],
-        "bounty_photo": "snow.png"
-    },
-    {
-        "crewid": "132",
-        "crewname": "Strider Walkers",
-        "password": "pass132",
-        "captain": "Lava Larry",
-        "members": [
-            "Warped",
-            "Fungus",
-            "Legs"
-        ],
-        "bounty_photo": "strider.png"
-    },
-    {
-        "crewid": "133",
-        "crewname": "Zoglin Smashers",
-        "password": "pass133",
-        "captain": "Raging Ron",
-        "members": [
-            "Tusk",
-            "Charge",
-            "Angry"
-        ],
-        "bounty_photo": "zoglin.png"
-    },
-    {
-        "crewid": "134",
-        "crewname": "Hoglin Hunters",
-        "password": "pass134",
-        "captain": "Swine Sid",
-        "members": [
-            "Pork",
-            "Leather",
-            "Fear"
-        ],
-        "bounty_photo": "hoglin.png"
-    },
-    {
-        "crewid": "135",
-        "crewname": "Warden Wardens",
-        "password": "pass135",
-        "captain": "Echo Ed",
-        "members": [
-            "Vibration",
-            "Dark",
-            "Sonic"
-        ],
-        "bounty_photo": "warden.png"
-    },
-    {
-        "crewid": "136",
-        "crewname": "Allay Helpers",
-        "password": "pass136",
-        "captain": "Cookie Cal",
-        "members": [
-            "Note",
-            "Music",
-            "Carry"
-        ],
-        "bounty_photo": "allay.png"
-    },
-    {
-        "crewid": "137",
-        "crewname": "Frog Jumpers",
-        "password": "pass137",
-        "captain": "Swampy Sam",
-        "members": [
-            "Tongue",
-            "Lamp",
-            "Lily"
-        ],
-        "bounty_photo": "frog.png"
-    },
-    {
-        "crewid": "138",
-        "crewname": "Tadpole Tails",
-        "password": "pass138",
-        "captain": "Tiny Tim",
-        "members": [
-            "Bucket",
-            "Swim",
-            "Grow"
-        ],
-        "bounty_photo": "tadpole.png"
-    },
-    {
-        "crewid": "139",
-        "crewname": "Camel Caravans",
-        "password": "pass139",
-        "captain": "Desert Dan",
-        "members": [
-            "Hump",
-            "Ride",
-            "Sand"
-        ],
-        "bounty_photo": "camel.png"
-    },
-    {
-        "crewid": "140",
-        "crewname": "Sniffer Sniffers",
-        "password": "pass140",
-        "captain": "Ancient Art",
-        "members": [
-            "Seed",
-            "MOSS",
-            "Dig"
-        ],
-        "bounty_photo": "sniffer.png"
-    },
-    {
-        "crewid": "141",
-        "crewname": "Breeze Blasts",
-        "password": "pass141",
-        "captain": "Windy Will",
-        "members": [
-            "Trial",
-            "Key",
-            "Jump"
-        ],
-        "bounty_photo": "breeze.png"
-    },
-    {
-        "crewid": "142",
-        "crewname": "Crafter Makers",
-        "password": "pass142",
-        "captain": "Auto Al",
-        "members": [
-            "Grid",
-            "Item",
-            "Recipe"
-        ],
-        "bounty_photo": "crafter.png"
-    },
-    {
-        "crewid": "143",
-        "crewname": "Ominous Raiders",
-        "password": "pass143",
-        "captain": "Bad Luck Bob",
-        "members": [
-            "Bottle",
-            "Trial",
-            "Pot"
-        ],
-        "bounty_photo": "ominous.png"
-    },
-    {
-        "crewid": "144",
-        "crewname": "Bogged Bows",
-        "password": "pass144",
-        "captain": "Mossy Mo",
-        "members": [
-            "Poison",
-            "Swamp",
-            "Skull"
-        ],
-        "bounty_photo": "bogged.png"
-    },
-    {
-        "crewid": "145",
-        "crewname": "Copper Cores",
-        "password": "pass145",
-        "captain": "Rusty Rick",
-        "members": [
-            "Bulb",
-            "Grate",
-            "Chiseled"
-        ],
-        "bounty_photo": "copper.png"
-    },
-    {
-        "crewid": "146",
-        "crewname": "Tuff Toughs",
-        "password": "pass146",
-        "captain": "Stone Stu",
-        "members": [
-            "Gray",
-            "Hard",
-            "Bricks"
-        ],
-        "bounty_photo": "tuff.png"
-    },
-    {
-        "crewid": "147",
-        "crewname": "Trial Masters",
-        "password": "pass147",
-        "captain": "Vault Vic",
-        "members": [
-            "Key",
-            "Loot",
-            "Challenge"
-        ],
-        "bounty_photo": "trial.png"
-    },
-    {
-        "crewid": "148",
-        "crewname": "Mace Smashers",
-        "password": "pass148",
-        "captain": "Heavy Hit",
-        "members": [
-            "Breeze",
-            "Rod",
-            "Core"
-        ],
-        "bounty_photo": "mace.png"
-    },
-    {
-        "crewid": "149",
-        "crewname": "Flow Patterns",
-        "password": "pass149",
-        "captain": "Stylish Sy",
-        "members": [
-            "Banner",
-            "Trim",
-            "Armor"
-        ],
-        "bounty_photo": "flow.png"
-    },
-    {
-        "crewid": "150",
-        "crewname": "Bolt Explorers",
-        "password": "pass150",
-        "captain": "Fast Fay",
-        "members": [
-            "Blue",
-            "Light",
-            "Strike"
-        ],
-        "bounty_photo": "bolt.png"
-    }
+  {
+    "crewid": "101",
+    "crewname": "Char Pirates",
+    "password": "charpirates",
+    "captain": "Ashwajeet Ambade",
+    "members": ["Ashwajeet Ambade", "Tushar", "Vedant", "Krish"],
+    "bounty_photo": "char_pirates.png"
+  },
+  {
+    "crewid": "102",
+    "crewname": "Team ALPHA",
+    "password": "ALPHA@2028",
+    "captain": "Hariom Dwivedi",
+    "members": ["Hariom Dwivedi", "Akshad Wanjare", "Anuj Gupta", "Bhushan salve"],
+    "bounty_photo": "team_alpha.png"
+  },
+  {
+    "crewid": "103",
+    "crewname": "Modern Maverick",
+    "password": "Paras2026",
+    "captain": "Sahil Singh",
+    "members": ["Sahil Singh", "Paras Pardhi", "Aryan Nagmote", "Shravil Karotiya"],
+    "bounty_photo": "modern_maverick.png"
+  },
+  {
+    "crewid": "104",
+    "crewname": "Straw Hat",
+    "password": "One piece is real",
+    "captain": "Ansh Meshram",
+    "members": ["Ansh Meshram", "Atharv Thor", "Harsh Supekar", "Mayur mathare"],
+    "bounty_photo": "straw_hat.png"
+  },
+  {
+    "crewid": "105",
+    "crewname": "APLHA REGIMENT",
+    "password": "123256",
+    "captain": "Shivam Yerekar",
+    "members": ["Shivam Yerekar", "Deven babhulkar", "Sanket piprewar", "Sahil wadekar"],
+    "bounty_photo": "alpha_regiment.png"
+  },
+  {
+    "crewid": "106",
+    "crewname": "BountyHunters",
+    "password": "Tarik@78430",
+    "captain": "Tarik A. Ansari",
+    "members": ["Tarik A. Ansari", "Sammek dongre", "Yashika Nagdeve", "Sonakshi Dhomne"],
+    "bounty_photo": "bounty_hunters.png"
+  },
+  {
+    "crewid": "107",
+    "crewname": "Chalchalchal",
+    "password": "MNP",
+    "captain": "Narayani Wadhai",
+    "members": ["Narayani Wadhai", "Prasad Hore", "Mikhil Burbure", "VEDIKA RAJU ASTANKAR"],
+    "bounty_photo": "chalchalchal.png"
+  },
+  {
+    "crewid": "108",
+    "crewname": "Jugaadu Pirates",
+    "password": "Aatma",
+    "captain": "Manish Wanjari",
+    "members": ["Manish Wanjari", "Yutika Manekar", "Mohit Somankar", "Aaditya Gudhniye"],
+    "bounty_photo": "jugaadu_pirates.png"
+  },
+  {
+    "crewid": "109",
+    "crewname": "Gold hunters",
+    "password": "Goldhunters@3467",
+    "captain": "Chanchal Nehete",
+    "members": ["Chanchal Nehete", "Suhani Mandpe", "Dhanashri Nagpure", "Manjiri Ladde"],
+    "bounty_photo": "gold_hunters.png"
+  },
+  {
+    "crewid": "110",
+    "crewname": "XHUNTER",
+    "password": "9209907403",
+    "captain": "Aryan Shastrakar",
+    "members": ["Aryan Shastrakar", "Atharva Bobde", "Purvesh Patheker", "Arpit Ninawe"],
+    "bounty_photo": "xhunter.png"
+  },
+  {
+    "crewid": "111",
+    "crewname": "Storm Raiders",
+    "password": "sarang2026",
+    "captain": "Atharv Akhud",
+    "members": ["Atharv Akhud", "Piyush Patil", "Ayush Ingle", "Sarang Chafekar"],
+    "bounty_photo": "storm_raiders.png"
+  },
+  {
+    "crewid": "112",
+    "crewname": "Team 11",
+    "password": "archit@18",
+    "captain": "Aarhambh mankar",
+    "members": ["Aarhambh mankar", "Devdat Mahalle", "Archit Sahu", "Prashil dongre"],
+    "bounty_photo": "team_11.png"
+  },
+  {
+    "crewid": "113",
+    "crewname": "Team Elite",
+    "password": "Q9F6BTRE",
+    "captain": "Tanish Rangase",
+    "members": ["Tanish Rangase", "vinit bodhe", "Tanvi ghared", "Yesh pedkan"],
+    "bounty_photo": "team_elite.png"
+  },
+  {
+    "crewid": "114",
+    "crewname": "The Flying Dutchman",
+    "password": "102",
+    "captain": "PRAVRUTTI JAIPURKAR",
+    "members": ["PRAVRUTTI JAIPURKAR", "ANUSHKA GUDADHE", "AKSHAY UNDIRWADE", "BHUMI PRAJAPATI"],
+    "bounty_photo": "flying_dutchman.png"
+  },
+  {
+    "crewid": "115",
+    "crewname": "The Black Pearl",
+    "password": "123",
+    "captain": "Ayush badwaik",
+    "members": ["Ayush badwaik", "pranav paunikar", "gayatrividhate", "Ankit Bhisikar"],
+    "bounty_photo": "black_pearl.png"
+  },
+  {
+    "crewid": "116",
+    "crewname": "Queen Anne's Revenge",
+    "password": "103",
+    "captain": "AMRUTA KHADSE",
+    "members": ["AMRUTA KHADSE", "AMRUTA KHADSE", "ARYAN NAGMOTE", "JANVI MANOJ AKHAND"],
+    "bounty_photo": "queen_annes.png"
+  },
+  {
+    "crewid": "117",
+    "crewname": "Diamond Seekers",
+    "password": "104",
+    "captain": "JATIN LANJEWAR",
+    "members": ["JATIN LANJEWAR", "ARYAN SONU PURI", "AYUSHI GODBOLE", "KHUSHI VINOD SHARMA"],
+    "bounty_photo": "diamond.png"
+  },
+  {
+    "crewid": "118",
+    "crewname": "Nether Raiders",
+    "password": "105",
+    "captain": "RISHI TANDULKAR",
+    "members": ["RISHI TANDULKAR", "DHANSHRI GAURKHEDE", "DEEPIKA ANIL CHAWHAN", "LAKSHANA MALVIYA"],
+    "bounty_photo": "nether.png"
+  },
+  {
+    "crewid": "119",
+    "crewname": "Ocean Explorers",
+    "password": "106",
+    "captain": "ADITI SUNIL MILMILE",
+    "members": ["ADITI SUNIL MILMILE", "JAYESH GAJBHIYE", "NEHA NILESH CHETULE", "NEHA BAHURUPI"],
+    "bounty_photo": "ocean.png"
+  },
+  {
+    "crewid": "120",
+    "crewname": "Redstone Pirates",
+    "password": "107",
+    "captain": "YASH DESHMUKH",
+    "members": ["YASH DESHMUKH", "KASHISH THAKRE", "PALAK SINGH", "NISHA D. BAMBAL"],
+    "bounty_photo": "redstone.png"
+  },
+  {
+    "crewid": "121",
+    "crewname": "Ender Dragons",
+    "password": "108",
+    "captain": "PIYUSH MAHENDRA PATIL",
+    "members": ["PIYUSH MAHENDRA PATIL", "MUBASHSHIR RIZVI", "VANSHIKA BHOYAR", "PRARTHANA CHAVAN"],
+    "bounty_photo": "ender.png"
+  },
+  {
+    "crewid": "122",
+    "crewname": "Iron Golems",
+    "password": "109",
+    "captain": "PIYUSH NARESH PHULE",
+    "members": ["PIYUSH NARESH PHULE", "NEESHA TABHANE", "SANKET SONTAKKE", "PUNYSHRI PUN"],
+    "bounty_photo": "iron.png"
+  },
+  {
+    "crewid": "123",
+    "crewname": "Skeleton Archers",
+    "password": "110",
+    "captain": "CHANCHAL MANWATKAR",
+    "members": ["CHANCHAL MANWATKAR", "PARUL NAKADE", "VIKRAM THAKUR", "ANUPAM TRIVEDI"],
+    "bounty_photo": "skeleton.png"
+  },
+  {
+    "crewid": "124",
+    "crewname": "Creeping Creepers",
+    "password": "111",
+    "captain": "ROHIT KASHYAP",
+    "members": ["ROHIT KASHYAP", "SUJAL KAWALE", "PRIYANKA ELESH GHEDAM", "NANDINI VINAY JAISWAL"],
+    "bounty_photo": "creeper.png"
+  },
+  {
+    "crewid": "125",
+    "crewname": "Zombie Horde",
+    "password": "112",
+    "captain": "OJASWI HIWRALE",
+    "members": ["OJASWI HIWRALE", "SEJAL SHRIVAS", "JAMAL SHAHID", "SHREYASH SANJAY AMLU"],
+    "bounty_photo": "zombie.png"
+  },
+  {
+    "crewid": "126",
+    "crewname": "Spider Riders",
+    "password": "113",
+    "captain": "SUMIT GUPTA",
+    "members": ["SUMIT GUPTA", "SHAFIN RIYAJ PATEL", "ASHWINI SIRSAT", "SIDDHI DILIP BAMNOTE"],
+    "bounty_photo": "spider.png"
+  },
+  {
+    "crewid": "127",
+    "crewname": "Phantom Flyers",
+    "password": "114",
+    "captain": "SWANAND BARVE",
+    "members": ["SWANAND BARVE", "SHIVAM KAUSHIK", "CHANCHAL MANWATKAR", "MANDAR VAIDYA"],
+    "bounty_photo": "phantom.png"
+  },
+  {
+    "crewid": "128",
+    "crewname": "Witch's Brew",
+    "password": "115",
+    "captain": "SHRUTI AKSHAY BHABHUT",
+    "members": ["SHRUTI AKSHAY BHABHUT", "MANJIRI LADDE", "AYUSH MANOJ KEDAR", "KARTIKA DHANULKAR"],
+    "bounty_photo": "witch.png"
+  },
+  {
+    "crewid": "129",
+    "crewname": "Slime Squishers",
+    "password": "116",
+    "captain": "NAMRATA DILIP SHENDE",
+    "members": ["NAMRATA DILIP SHENDE", "SHRUTI SHAHU", "PIYUSH NAGOSE", "ASHWINI SIRSAT"],
+    "bounty_photo": "slime.png"
+  },
+  {
+    "crewid": "130",
+    "crewname": "Magma Cubes",
+    "password": "117",
+    "captain": "AYUSHI DASHRATH RAUT",
+    "members": ["AYUSHI DASHRATH RAUT", "ADITYA KANGRE", "NIKITA BORKAR", "PRANJAL PARIHAR"],
+    "bounty_photo": "magma.png"
+  },
+  {
+    "crewid": "131",
+    "crewname": "Shulker Shelters",
+    "password": "118",
+    "captain": "RUCHIKA KOCHE",
+    "members": ["RUCHIKA KOCHE", "VEDANT MYANAWAR", "SUMIT GUPTA", "DAMINI VIJAY FALKE"],
+    "bounty_photo": "shulker.png"
+  },
+  {
+    "crewid": "132",
+    "crewname": "Drowned Mariners",
+    "password": "119",
+    "captain": "DHRUV KUHITE",
+    "members": ["DHRUV KUHITE", "IT25007", "PUJA THOTE", "SHAGUN HARINKHEDE"],
+    "bounty_photo": "drowned.png"
+  },
+  {
+    "crewid": "133",
+    "crewname": "Villager Traders",
+    "password": "120",
+    "captain": "VISHESH SHRIKHANDE",
+    "members": ["VISHESH SHRIKHANDE", "VEDANT PIPARHETE", "DEVASHREE ATALKAR", "SIMARJEET SINGH KALSI"],
+    "bounty_photo": "villager.png"
+  },
+  {
+    "crewid": "134",
+    "crewname": "Illager Raiders",
+    "password": "pass121",
+    "captain": "Vindicator Vic",
+    "members": ["Vindicator Vic", "Axe", "Banner", "Ravager"],
+    "bounty_photo": "illager.png"
+  },{
+    "crewid": "135",
+    "crewname": "Ender Explorers",
+    "password": "pass122",
+    "captain": "Ender Explorer",    
+    "members": ["Ender Explorer", "Ender Scout", "Ender Seeker"],
+    "bounty_photo": "ender_explorers.png"
+  }
 ]

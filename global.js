@@ -24,6 +24,7 @@ window.PiratesUtils = {
      * @returns {any} Parsed object or fallback
      */
     safeJSONParse: (str, fallback = null) => {
+        if (!str || typeof str !== 'string') return fallback;
         try {
             return JSON.parse(str);
         } catch (e) {
@@ -546,24 +547,64 @@ function createMinecraftBlockStyle(colorMain, colorDark, colorBorder) {
 window.createMinecraftBlockStyle = createMinecraftBlockStyle;
 
 function applyTheme() {
-    const themeMap = [
-        { selector: '.wooden-container', colors: { main: '#8B4513', dark: '#733C10', border: '#5A2D0C' }, config: { size: '80px 80px', borderWidth: '8px' } },
-        { selector: '.wood-block, .corner-block', colors: { main: '#9B5523', dark: '#8B4513', border: '#3D1F08' }, config: { size: '20px 20px', borderWidth: '2px' } },
-        { selector: '.glass-block, .glass-corner', colors: { main: 'rgba(173, 216, 230, 0.3)', dark: 'rgba(255, 255, 255, 0.4)', border: '#ffffff' }, config: { size: '20px 20px', borderWidth: '1px', backdropFilter: 'blur(4px)' } },
-        { selector: '.loading-bar-container', colors: { main: '#333333', dark: '#222222', border: '#111111' }, config: { size: '40px 40px', borderWidth: '4px' } },
-        { selector: '.wanted-poster', colors: { main: '#f5f5dc', dark: '#dfdfbf', border: '#3e2723' }, config: { size: '60px 60px', borderWidth: '8px' } },
-        { selector: '.stone-container', colors: { main: '#555555', dark: '#444444', border: '#222222' }, config: { size: '40px 40px', borderWidth: '6px' } },
-        { selector: '.glass-panel, .glass-container, .lens-overlay', colors: { main: 'rgba(255, 255, 255, 0.1)', dark: 'rgba(255, 255, 255, 0.05)', border: '#ffffff' }, config: { size: '40px 40px', borderWidth: '6px', backdropFilter: 'blur(12px) brightness(1.1)' } },
-        { selector: '.ash-container', colors: { main: '#444444', dark: '#2C2C2C', border: '#1A1A1A' }, config: { size: '40px 40px', borderWidth: '6px' } },
-        { selector: '.fire-container', colors: { main: '#FF4500', dark: '#8B0000', border: '#3E0000' }, config: { size: '30px 30px', borderWidth: '6px', boxShadow: '0 0 15px rgba(255, 69, 0, 0.4)' } },
-        { selector: '.emerald-container', colors: { main: '#00A86B', dark: '#00703B', border: '#004020' }, config: { size: '40px 40px', borderWidth: '6px', boxShadow: '0 0 10px rgba(0, 168, 107, 0.3)' } }
+    const themeGroups = [
+        {
+            selectors: '.wooden-container',
+            colors: { main: '#8B4513', dark: '#733C10', border: '#5A2D0C' },
+            config: { size: '80px 80px', borderWidth: '8px' }
+        },
+        {
+            selectors: '.wood-block, .corner-block',
+            colors: { main: '#9B5523', dark: '#8B4513', border: '#3D1F08' },
+            config: { size: '20px 20px', borderWidth: '2px' }
+        },
+        {
+            selectors: '.glass-block, .glass-corner',
+            colors: { main: 'rgba(173, 216, 230, 0.3)', dark: 'rgba(255, 255, 255, 0.4)', border: '#ffffff' },
+            config: { size: '20px 20px', borderWidth: '1px', backdropFilter: 'blur(4px)' }
+        },
+        {
+            selectors: '.loading-bar-container',
+            colors: { main: '#333333', dark: '#222222', border: '#111111' },
+            config: { size: '40px 40px', borderWidth: '4px' }
+        },
+        {
+            selectors: '.wanted-poster',
+            colors: { main: '#f5f5dc', dark: '#dfdfbf', border: '#3e2723' },
+            config: { size: '60px 60px', borderWidth: '8px' }
+        },
+        {
+            selectors: '.stone-container',
+            colors: { main: '#555555', dark: '#444444', border: '#222222' },
+            config: { size: '40px 40px', borderWidth: '6px' }
+        },
+        {
+            selectors: '.glass-panel, .glass-container, .lens-overlay',
+            colors: { main: 'rgba(255, 255, 255, 0.1)', dark: 'rgba(255, 255, 255, 0.05)', border: '#ffffff' },
+            config: { size: '40px 40px', borderWidth: '6px', backdropFilter: 'blur(12px) brightness(1.1)' }
+        },
+        {
+            selectors: '.ash-container',
+            colors: { main: '#444444', dark: '#2C2C2C', border: '#1A1A1A' },
+            config: { size: '40px 40px', borderWidth: '6px' }
+        },
+        {
+            selectors: '.fire-container',
+            colors: { main: '#FF4500', dark: '#8B0000', border: '#3E0000' },
+            config: { size: '30px 30px', borderWidth: '6px', boxShadow: '0 0 15px rgba(255, 69, 0, 0.4)' }
+        },
+        {
+            selectors: '.emerald-container',
+            colors: { main: '#00A86B', dark: '#00703B', border: '#004020' },
+            config: { size: '40px 40px', borderWidth: '6px', boxShadow: '0 0 10px rgba(0, 168, 107, 0.3)' }
+        }
     ];
 
-    themeMap.forEach(({ selector, colors, config }) => {
-        const elements = document.querySelectorAll(selector);
+    themeGroups.forEach(({ selectors, colors, config }) => {
+        const elements = document.querySelectorAll(selectors);
         if (elements.length === 0) return;
-        const isGlassSelector = selector.includes('glass');
 
+        const isGlass = selectors.includes('glass');
         const style = createMinecraftBlockStyle(colors.main, colors.dark, colors.border);
 
         elements.forEach(el => {
@@ -577,7 +618,7 @@ function applyTheme() {
             if (config.backdropFilter) s.backdropFilter = config.backdropFilter;
             if (config.boxShadow) s.boxShadow = config.boxShadow;
 
-            if (isGlassSelector) {
+            if (isGlass) {
                 s.borderRadius = '2px';
                 s.position = 'relative';
             }
@@ -585,7 +626,7 @@ function applyTheme() {
     });
 }
 
-const EXCLUDED_HUD_PAGES = new Set(['index.html', 'displaycrew.html', 'login.html']);
+const EXCLUDED_HUD_PAGES = new Set(['index.html', 'displaycrew.html', 'login.html', 'admin.html', 'timer.html', 'meme.html']);
 const getCurrentPage = () => window.location.pathname.split('/').pop() || 'index.html';
 
 // Global HUD
@@ -601,9 +642,11 @@ function injectGlobalHUD() {
     hud.innerHTML = `
         <div class="hud-left">
             <a href="login.html"><img src="images/logo.png" alt="Bounty Pirates" class="tv-logo"></a>
+        </div>
+        <div class="hud-middle">
             ${crewHtml}
         </div>
-        <div id="hud-timer-slot"></div>
+        <div id="hud-timer-slot" class="hud-right"></div>
     `;
     document.body.appendChild(hud);
 }
@@ -738,16 +781,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let ticking = false;
         if (hasParallaxTargets) {
             document.addEventListener('mousemove', (e) => {
-            if (!ticking) {
-                requestAnimationFrame(() => {
-                    const x = (e.clientX / window.innerWidth - 0.5);
-                    const y = (e.clientY / window.innerHeight - 0.5);
-                    bgTargets.forEach(el => el.style.transform = `translate3d(${x * -20}px, ${y * -20}px, 0)`);
-                    contentTargets.forEach(el => el.style.transform = `perspective(1000px) rotateX(${y * -5}deg) rotateY(${x * 5}deg) translateZ(10px)`);
-                    ticking = false;
-                });
-                ticking = true;
-            }
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        const x = (e.clientX / window.innerWidth - 0.5);
+                        const y = (e.clientY / window.innerHeight - 0.5);
+                        bgTargets.forEach(el => el.style.transform = `translate3d(${x * -20}px, ${y * -20}px, 0)`);
+                        contentTargets.forEach(el => el.style.transform = `perspective(1000px) rotateX(${y * -5}deg) rotateY(${x * 5}deg) translateZ(10px)`);
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
             }, { passive: true });
         }
     }
@@ -912,23 +955,36 @@ const syncStandingToCloud = PiratesUtils.debounce(() => {
     // Gather L1 data from localStorage
     let l1Timestamp = '-';
     try {
-        const l1Data = JSON.parse(localStorage.getItem('pirateLevel1Data') || '{}');
+        const l1Data = window.safeJSONParse(localStorage.getItem('pirateLevel1Data'), {});
         const crewId = gameState.teamData.crewid;
-        if (l1Data[crewId]) l1Timestamp = l1Data[crewId];
+        if (l1Data && l1Data[crewId]) l1Timestamp = l1Data[crewId];
     } catch (e) { /* ignore */ }
 
     // Gather L2 data from logs
     let l2Status = '-';
     try {
-        const logs = JSON.parse(localStorage.getItem('pirateAdminLogs') || '[]');
+        const logs = window.safeJSONParse(localStorage.getItem('pirateAdminLogs'), []);
         const crewId = gameState.teamData.crewid || gameState.teamData.id;
-        const hasSuccess = logs.some(l => l.crewId === crewId && l.type === 'VERIFY' && l.action === 'SUCCESS');
-        if (hasSuccess) l2Status = 'COMPLETE';
+        if (Array.isArray(logs)) {
+            const hasSuccess = logs.some(l => l.crewId === crewId && l.type === 'VERIFY' && l.action === 'SUCCESS');
+            if (hasSuccess) l2Status = 'COMPLETE';
+        }
     } catch (e) { /* ignore */ }
 
     // Gather L3 session data
     const session = gameState.level3Session || {};
-    const pathTrace = session.pathTrace || (gameState.journey ? gameState.journey.join('->') : '-');
+    let pathTrace = session.pathTrace || '-';
+
+    // Fallback if session path is missing but journey exists
+    if (pathTrace === '-' && Array.isArray(gameState.journey) && gameState.journey.length > 0) {
+        pathTrace = gameState.journey[0];
+        const jumps = Array.isArray(gameState.jumps) ? gameState.jumps : [];
+        for (let i = 1; i < gameState.journey.length; i++) {
+            const wasJump = jumps[i - 1] === true;
+            pathTrace += (wasJump ? ',' : '-') + gameState.journey[i];
+        }
+    }
+
     const scanCount = session.scanCount || (gameState.journey ? gameState.journey.length : 0);
     const lastScanNode = session.lastScanNode || gameState.currentNode || 'START';
     const lastScanTime = session.lastScanTime ? new Date(session.lastScanTime).toLocaleTimeString() : new Date().toLocaleTimeString();
@@ -944,7 +1000,6 @@ const syncStandingToCloud = PiratesUtils.debounce(() => {
         Score_L2: l2Status,
         Score_L3: (session.totalMarks || 0),
         Internal_Marks: (session.totalMarks || 0),
-        Avg_Score: (session.avgScore || 0),
         Total_Points: (gameState.points || 0).toFixed(2),
         Last_Seen: new Date().toLocaleTimeString(),
         Last_Scan: lastScanNode,

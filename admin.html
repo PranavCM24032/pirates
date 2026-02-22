@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <title>Bounty Pirates - Admin Command</title>
     <script>
         // Dynamic base path configuration for local & GitHub Pages compatibility
@@ -209,6 +210,10 @@
                     class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-active">
                     <span class="text-lg">🏆</span> Leaderboard
                 </button>
+                <button onclick="setTab('login')" id="nav-login"
+                    class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
+                    <span class="text-lg">🔑</span> Login Status
+                </button>
                 <button onclick="setTab('l1')" id="nav-l1"
                     class="w-full text-left px-4 py-3 rounded-lg text-sm font-semibold transition-all flex items-center gap-3 tab-inactive">
                     <span class="text-lg">⚡</span> Level 1 (Entry)
@@ -296,7 +301,6 @@
             </div>
         </div>
     </main>
-    </body>
     <!-- LOGIC -->
     <script>
         // --- CONSTANTS & STATE ---
@@ -398,6 +402,7 @@
             // Update Header Title
             const titles = {
                 'leaderboard': 'LEADERBOARD RANKINGS',
+                'login': 'LOGIN STATUS TRACKER',
                 'l1': 'LEVEL 1: MANUAL TIMESTAMP ENTRY',
                 'l2': 'LEVEL 2: QUIZ SUBMISSION TRACKING',
                 'l3': 'LEVEL 3: MAPPING & PATH LOGS',
@@ -476,7 +481,7 @@
             try {
                 const sheetUrl = getSheetUrl();
                 console.log("Fetching from:", sheetUrl);
-                
+
                 // DON'T use no-cors mode for GET requests
                 const response = await fetch(sheetUrl, {
                     method: 'GET',
@@ -484,33 +489,33 @@
                         'Accept': 'application/json'
                     }
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-                
+
                 const cloudData = await response.json();
-                
+
                 if (cloudData.error) {
                     throw new Error(cloudData.error);
                 }
-                
+
                 console.log("Cloud data received:", cloudData);
-                
+
                 // Reset state
                 state.liveDevices = {};
                 state.l1Data = {}; // Clear to prevent stale data from persisting
                 state.l3Sessions = {}; // Clear to ensure fresh session data
                 state.syncMeta = { source: 'CLOUD', endpoint: sheetUrl };
-                
+
                 // Map logs
                 if (cloudData.logs && Array.isArray(cloudData.logs)) {
                     state.logs = cloudData.logs.map(log => {
                         let parsed = {};
-                        try { 
-                            parsed = typeof log.Raw === 'string' ? JSON.parse(log.Raw) : {}; 
+                        try {
+                            parsed = typeof log.Raw === 'string' ? JSON.parse(log.Raw) : {};
                         } catch (e) { /* ignore */ }
-                        
+
                         const normalized = {
                             crewId: parsed.crewId || log.Category || 'UNKNOWN',
                             type: parsed.type || log.Type || 'UNKNOWN',
@@ -521,36 +526,36 @@
                             action: parsed.action || (log.Raw && log.Raw.includes('SUCCESS') ? 'SUCCESS' : 'UNKNOWN'),
                             ...parsed
                         };
-                        
+
                         if (normalized.crewId && normalized.crewId !== 'UNKNOWN') {
                             touchLiveDevice(normalized.crewId, normalized.deviceId, normalized.timestamp);
                         }
-                        
+
                         return normalized;
                     });
                 }
-                
+
                 // Process leaderboard
                 if (cloudData.leaderboard && Array.isArray(cloudData.leaderboard)) {
                     processLeaderboardData(cloudData.leaderboard);
                 }
-                
+
                 // Process paths
                 if (cloudData.paths && Array.isArray(cloudData.paths)) {
                     processPathData(cloudData.paths);
                 }
-                
+
                 // Success!
                 state.syncMeta.source = 'CLOUD';
-                
+
             } catch (error) {
                 console.error("Cloud sync failed:", error);
-                state.syncMeta = { 
-                    source: 'LOCAL', 
-                    endpoint: getSheetUrl(), 
-                    error: error.message 
+                state.syncMeta = {
+                    source: 'LOCAL',
+                    endpoint: getSheetUrl(),
+                    error: error.message
                 };
-                
+
                 // Fallback to localStorage if sheet is unavailable
                 loadFromLocalStorage();
             }
@@ -596,8 +601,9 @@
                 const mData = state.manual[id] || {};
 
                 // Login
-                const autoLogin = state.logs.some(l => String(l.crewId) === id && l.type === 'LOGIN');
-                const isLoggedIn = autoLogin || !!mData.login;
+                const hasLoginLog = state.logs.some(l => String(l.crewId) === id && l.type === 'LOGIN');
+                const hasDeviceActivity = !!state.liveDevices[id];
+                const isLoggedIn = hasLoginLog || hasDeviceActivity || !!mData.login;
 
                 // L1
                 const l1Ts = state.l1Data[id];
@@ -684,7 +690,7 @@
                 const manualL3 = parseInt(mData.l3) || 0;
 
                 // --- SIMPLIFIED SCORING SYSTEM ---
-                
+
                 // LEVEL 1: Max 10 points
                 // Completion-based: 10 points if completed, 0 if not
                 let l1Score = 0;
@@ -693,21 +699,15 @@
                 }
 
                 // LEVEL 2: Max 10 points but -2 on incorrect
-                // Base 10 points, minus 2 per failed attempt
                 let l2Score = 0;
                 if (l2Success) {
-                    l2Score = 10 - (l2Fails * 2); // 10 - (fails × 2)
-                    if (l2Score < 0) l2Score = 0; // Minimum 0 points
+                    l2Score = 10 - (l2Fails * 2);
+                    if (l2Score < 0) l2Score = 0;
                 }
 
-                // LEVEL 3: Based on weighted edges sum
-                // Direct score from totalMarks (weighted edges)
-                let l3Score = 0;
-                if (l3TotalWeight > 0 || l3Logs.length > 0) {
-                    l3Score = l3TotalWeight; // Direct score from weighted edges sum
-                } else {
-                    l3Score = manualL3; // Use manual override if no auto score
-                }
+                // LEVEL 3: Recorded as raw weight (Marks)
+                let l3Score = l3TotalWeight || 0;
+                if (manualL3 > 0) l3Score = manualL3;
 
                 return {
                     ...crew,
@@ -722,20 +722,28 @@
                     l3Score: Math.round(l3Score * 10) / 10,
                     l3ScanCount: session.scanCount || l3Logs.length,
                     l3TotalWeight,
-                    l3AvgScore: Math.round(l3AvgScore * 100) / 100,
                     manualL3,
                     lastScanTime,
                     lastScanNode,
                     pathTrace,
                     l2CompletionTime: l2time,
-                    totalScore: Math.round((l1Score + l2Score + l3Score) * 10) / 10
+                    // Robust sorting:
+                    // Phase 3 (L3): 300 - (marks/1000) -> Higher phase beats all, lower marks beat higher marks
+                    // Phase 2 (L2): 200 + l2Score -> Higher score beats lower score
+                    // Phase 1 (L1): 100
+                    sortScore: (l2Success ? (300 - (l3Score / 1000)) : (l1Ts ? (200 + l2Score) : 100))
                 };
-            }).sort((a, b) => b.totalScore - a.totalScore);
+            }).sort((a, b) => b.sortScore - a.sortScore);
         }
 
         function updateStats() {
             if (state.leaderboard.length > 0) {
-                document.getElementById('topCrew').innerText = 
+                document.getElementById('topCrew').innerText = state.leaderboard[0].crewname || '---';
+                document.getElementById('topScore').innerText = state.leaderboard[0].l2Success ? 'WINNER' : 'ACTIVE';
+            } else {
+                document.getElementById('topCrew').innerText = '---';
+                document.getElementById('topScore').innerText = '0 PTS';
+            }
             document.getElementById('activeTeams').innerText = state.leaderboard.filter(c => c.isLoggedIn).length;
         }
 
@@ -781,8 +789,8 @@
                 // LEVEL 3: SHOW ALL
             }
             else if (tab === 'login') {
-                // Show only if logged in
-                data = data.filter(c => c.isLoggedIn);
+                // Show ALL crews, but sort by online status
+                data.sort((a, b) => (b.isLoggedIn ? 1 : 0) - (a.isLoggedIn ? 1 : 0));
             }
 
             // Helpers
@@ -817,7 +825,7 @@
             const wrapperEnd = '</div>';
 
             if (tab === 'leaderboard') {
-                html = wrapperStart + header('0.4fr 2fr 1.2fr 1.2fr 1.2fr 1fr', '#', 'CREW', 'L1 (100)', 'L2 (200)', 'L3 (500)', 'TOTAL');
+                html = wrapperStart + header('0.4fr 2fr 1.2fr 1.2fr 1.2fr 1fr', '#', 'CREW', 'L1 (10)', 'L2 (10)', 'L3 (MARKS)', 'STATUS');
                 html += '<div class="divide-y divide-slate-800">';
                 html += data.map((d, i) => {
                     // Rank badge colors
@@ -841,9 +849,13 @@
                     </div>
                     <div>
                         <div class="font-mono font-bold ${d.l3Score > 0 ? 'text-blue-400' : 'text-slate-600'}">${d.l3Score > 0 ? d.l3Score : '-'}</div>
-                        ${d.l3TotalWeight > 0 ? `<div class="text-[9px] text-slate-500">wt: ${d.l3TotalWeight}</div>` : ''}
+                        ${d.l3TotalWeight > 0 ? `<div class="text-[9px] text-slate-500">Total Marks</div>` : ''}
                     </div>
-                    <div class="font-mono font-bold text-amber-400 text-lg ${rankBg} rounded px-1">${d.totalScore}</div>
+                    <div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${d.l2Success ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : (d.l1Score > 0 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-slate-800 text-slate-500 border-slate-700')}">
+                            ${d.l2Success ? 'FINISHER' : (d.l1Score > 0 ? 'LEVEL 2' : 'LEVEL 1')}
+                        </span>
+                    </div>
                 `);
                 }).join('');
                 html += '</div>' + wrapperEnd;
@@ -911,17 +923,16 @@
 
             } else if (state.currentTab === 'l3') {
                 // LEVEL 3: QR NODE SCANNING - ROSTER LOG
-                html = wrapperStart + header('0.8fr 1fr 1.5fr 2fr 0.8fr 0.8fr 0.9fr 1.2fr 1fr', 'STATUS', 'CREW ID', 'CREW NAME', 'PATH', 'LAST SCAN', 'SCANS', 'AVG', 'TIMESTAMP', 'MARKS');
+                html = wrapperStart + header('0.8fr 1fr 1.5fr 2fr 0.8fr 0.8fr 1.2fr 1fr', 'STATUS', 'CREW ID', 'CREW NAME', 'PATH', 'LAST SCAN', 'SCANS', 'TIMESTAMP', 'MARKS');
                 html += data.map(d => {
                     const pathTrace = d.pathTrace || '-';
                     const marks = d.l3TotalWeight || 0;
                     const scans = d.l3ScanCount || 0;
-                    const avg = d.l3AvgScore || 0;
                     const timestamp = d.lastScanTime ? new Date(d.lastScanTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
 
                     let lastNode = d.lastScanNode || '-';
                     if ((lastNode === '-' || !lastNode) && pathTrace && pathTrace !== '-') {
-                        const nodes = pathTrace.split('->').filter(n => n.trim());
+                        const nodes = pathTrace.split(/[-,]/).filter(n => n.trim());
                         lastNode = nodes.length > 0 ? nodes[nodes.length - 1].trim() : '-';
                     }
 
@@ -930,14 +941,13 @@
                         ? 'bg-green-500/20 text-green-400 border-green-500/30'
                         : 'bg-red-500/20 text-red-400 border-red-500/30';
 
-                    return row('0.8fr 1fr 1.5fr 2fr 0.8fr 0.8fr 0.9fr 1.2fr 1fr', `
+                    return row('0.8fr 1fr 1.5fr 2fr 0.8fr 0.8fr 1.2fr 1fr', `
                         <div><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusClass}">${statusText}</span></div>
                         <div class="font-mono text-blue-400 font-bold">${d.crewid}</div>
                         <div class="text-white font-semibold">${d.crewname}</div>
                         <div class="font-mono text-slate-300 text-[10px] break-all leading-tight">${escapeHTML(pathTrace)}</div>
                         <div class="font-mono text-cyan-400 font-bold text-sm text-center">${escapeHTML(lastNode)}</div>
                         <div class="font-mono text-slate-300 text-sm text-center">${scans}</div>
-                        <div class="font-mono text-amber-300 text-sm text-center">${avg}</div>
                         <div class="font-mono text-slate-400 text-xs text-center">${timestamp}</div>
                         <div class="font-mono font-bold text-green-400 text-lg text-center">${marks}</div>
                     `);
@@ -1240,7 +1250,7 @@
 
                 const text = await response.text();
                 console.log("Sync response:", text);
-                
+
                 alert("✅ Sync complete!");
                 await refreshData(); // Refresh to get latest
             } catch (e) {
@@ -1274,16 +1284,16 @@
         async function testCloudConnection() {
             const endpoint = getSheetUrl();
             console.log("Testing connection to:", endpoint);
-            
+
             try {
                 const response = await fetch(endpoint, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
-                
+
                 const text = await response.text();
                 console.log("Raw response:", text.substring(0, 200));
-                
+
                 try {
                     const data = JSON.parse(text);
                     console.log("Parsed data:", data);
@@ -1299,19 +1309,42 @@
 
         function clearClientPathState() {
             try {
-                const rawState = localStorage.getItem('pirateState');
-                if (!rawState) return;
+                const BASE_STATE_KEY = 'pirateState';
+                const CREW_STATE_PREFIX = 'pirateState:crew:';
 
-                const pirateState = JSON.parse(rawState);
-                if (!pirateState || typeof pirateState !== 'object') return;
+                // Clear legacy/base state if present
+                const rawBaseState = localStorage.getItem(BASE_STATE_KEY);
+                if (rawBaseState) {
+                    const baseState = JSON.parse(rawBaseState);
+                    if (baseState && typeof baseState === 'object') {
+                        baseState.journey = [];
+                        baseState.jumps = [];
+                        baseState.level3Session = null;
+                        baseState.currentNode = 'START';
+                        baseState.targetNode = null;
+                        localStorage.setItem(BASE_STATE_KEY, JSON.stringify(baseState));
+                    }
+                }
 
-                pirateState.journey = [];
-                pirateState.jumps = [];
-                pirateState.level3Session = null;
-                pirateState.currentNode = 'START';
-                pirateState.targetNode = null;
-
-                localStorage.setItem('pirateState', JSON.stringify(pirateState));
+                // Clear crew-scoped states used by global.js isolation model
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!key || !key.startsWith(CREW_STATE_PREFIX)) continue;
+                    const rawCrewState = localStorage.getItem(key);
+                    if (!rawCrewState) continue;
+                    try {
+                        const crewState = JSON.parse(rawCrewState);
+                        if (!crewState || typeof crewState !== 'object') continue;
+                        crewState.journey = [];
+                        crewState.jumps = [];
+                        crewState.level3Session = null;
+                        crewState.currentNode = 'START';
+                        crewState.targetNode = null;
+                        localStorage.setItem(key, JSON.stringify(crewState));
+                    } catch (_) {
+                        // Ignore malformed entries and continue.
+                    }
+                }
             } catch (e) {
                 console.warn('Failed to clear client path state:', e);
             }
@@ -1319,12 +1352,22 @@
 
 
         function addManualLogin() {
-            const id = document.getElementById('manualLoginId').value.toUpperCase();
+            const id = document.getElementById('manualLoginId').value.toUpperCase().trim();
             if (!id) return alert("Enter Crew ID");
             if (!state.crews.find(c => c.crewid === id)) return alert("Invalid Crew ID");
 
             if (!state.manual[id]) state.manual[id] = {};
             state.manual[id].login = true;
+            state.logs.push({
+                crewId: id,
+                type: 'LOGIN',
+                action: 'MANUAL',
+                timestamp: Date.now(),
+                deviceId: 'ADMIN',
+                sessionId: 'ADMIN',
+                page: 'admin.html'
+            });
+            localStorage.setItem(KEYS.LOGS, JSON.stringify(state.logs));
             saveManual();
             document.getElementById('manualLoginId').value = '';
         }
@@ -1637,31 +1680,31 @@
         // --- HELPER FUNCTIONS FOR DATA PROCESSING ---
         function processLeaderboardData(leaderboard) {
             if (!leaderboard || !Array.isArray(leaderboard)) return;
-            
+
             leaderboard.forEach(row => {
                 const crewId = row.CrewID;
                 if (!crewId) return;
-                
+
                 // L1 timestamp
                 if (row.Score_L1 && row.Score_L1 !== '-') {
                     state.l1Data[crewId] = row.Score_L1;
                 }
-                
+
                 // L2 status
-                const l2Complete = row.Status === 'LEVEL_2_CERTIFIED' || 
-                                row.Status === 'LEVEL_3_RACE' ||
-                                row.Score_L2 === 'COMPLETE';
-                
+                const l2Complete = row.Status === 'LEVEL_2_CERTIFIED' ||
+                    row.Status === 'LEVEL_3_RACE' ||
+                    row.Score_L2 === 'COMPLETE';
+
                 if (l2Complete) {
                     if (!state.manual[crewId]) state.manual[crewId] = {};
                     if (!state.manual[crewId].l2) {
-                        state.manual[crewId].l2 = { 
-                            timestamp: row.Last_Seen || '-', 
-                            fails: 0 
+                        state.manual[crewId].l2 = {
+                            timestamp: row.Last_Seen || '-',
+                            fails: 0
                         };
                     }
                 }
-                
+
                 // L3 data
                 const l3Marks = parseFloat(row.Score_L3) || 0;
                 if (l3Marks > 0 || row.Path_Trace !== '-') {
@@ -1671,11 +1714,10 @@
                         pathTrace: row.Path_Trace || '-',
                         scanCount: parseInt(row.Scan_Count) || 0,
                         lastScanNode: row.Last_Scan || '-',
-                        lastScanTime: row.Last_Scan_Time ? Date.parse(row.Last_Scan_Time) || 0 : 0,
-                        avgScore: parseFloat(row.Avg_Score) || 0
+                        lastScanTime: row.Last_Scan_Time ? Date.parse(row.Last_Scan_Time) || 0 : 0
                     };
                 }
-                
+
                 // Track live devices
                 if (row.Device_ID) {
                     touchLiveDevice(crewId, row.Device_ID, row.Last_Seen);
@@ -1685,11 +1727,11 @@
 
         function processPathData(paths) {
             if (!paths || !Array.isArray(paths)) return;
-            
+
             paths.forEach(row => {
                 const crewId = row.CrewID;
                 if (!crewId) return;
-                
+
                 const existing = state.l3Sessions[crewId] || { crewId };
                 state.l3Sessions[crewId] = {
                     ...existing,
@@ -1708,12 +1750,12 @@
                 state.logs = JSON.parse(localStorage.getItem(KEYS.LOGS) || '[]');
                 state.l1Data = JSON.parse(localStorage.getItem(KEYS.L1) || '{}');
                 state.manual = JSON.parse(localStorage.getItem(KEYS.MANUAL) || '{}');
-                
+
                 const l3All = JSON.parse(localStorage.getItem('level3_sessions') || '[]');
                 l3All.forEach(session => {
                     state.l3Sessions[session.crewId] = session;
                 });
-                
+
                 state.logs.forEach(log => touchLiveDevice(log.crewId, log.deviceId, log.timestamp));
             } catch (e) {
                 console.warn("Failed to load from localStorage:", e);
@@ -1721,5 +1763,7 @@
         }
 
 
-</script>
+    </script>
+</body>
+
 </html>

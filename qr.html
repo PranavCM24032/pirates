@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -56,7 +56,8 @@
             height: 100dvh;
             width: 100%;
             overflow: hidden;
-            /* Lock screen to prevent visual cluster on scroll */
+            display: flex;
+            flex-direction: column;
             position: relative;
             margin: 0;
             padding: 0;
@@ -66,7 +67,7 @@
         }
 
         .app-container {
-            height: 100dvh;
+            flex: 1;
             width: 100%;
             display: flex;
             flex-direction: column;
@@ -705,6 +706,7 @@
 </head>
 
 <body>
+    <div class="hud-spacer" style="height: 80px; width: 100%; flex-shrink: 0; position: relative; z-index: 10;"></div>
     <!-- Background Layers -->
     <div class="background-layer move-cinematic"></div>
 
@@ -718,7 +720,7 @@
         <!-- Panel Wrapper -->
         <div class="panel-wrapper">
             <!-- Close Button (Positioned relative to wrapper) -->
-            <button class="close-btn" id="closeBtn" onclick="closeScanner()" style="display: none;">×</button>
+            <button class="close-btn" id="closeBtn" onclick="closeScanner()" style="display: none;">ï¿½</button>
 
             <!-- Wooden Panel -->
             <div class="wooden-panel">
@@ -942,6 +944,9 @@
             scannerArea.classList.add('active');
             if (closeBtn) closeBtn.style.display = 'flex';
 
+            // Hide global HUD to avoid overlap
+            document.querySelector('.global-hud')?.classList.add('hidden');
+
             setTimeout(() => {
                 initScanner();
             }, 20);
@@ -951,11 +956,15 @@
             if (html5QrCode) {
                 html5QrCode.stop().then(() => {
                     resetView();
+                    // Restore global HUD
+                    document.querySelector('.global-hud')?.classList.remove('hidden');
                 }).catch(() => {
                     resetView();
+                    document.querySelector('.global-hud')?.classList.remove('hidden');
                 });
             } else {
                 resetView();
+                document.querySelector('.global-hud')?.classList.remove('hidden');
             }
         }
 
@@ -1341,7 +1350,7 @@
                     ? "\n\nData not loaded. Serve this app with localhost and refresh."
                     : "";
 
-                alert(`? SIGNAL NOT CAUGHT!\n\nScanned: "${scannedId}"\n\nThis is not a valid treasure code!\n\nValid formats:\n• Location: graph nodes (A...KK)\n• Meme: M1-M13\n• Logic: L1-L10${loadHint}\n\nTry scanning again!`);
+                alert(`? SIGNAL NOT CAUGHT!\n\nScanned: "${scannedId}"\n\nThis is not a valid treasure code!\n\nValid formats:\nï¿½ Location: graph nodes (A...KK)\nï¿½ Meme: M1-M13\nï¿½ Logic: L1-L10${loadHint}\n\nTry scanning again!`);
                 processing = false;
 
             } catch (err) {

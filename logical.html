@@ -74,20 +74,7 @@
             user-select: none;
         }
 
-        .captain-header {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #FFD700;
-            font-family: 'Press Start 2P', cursive;
-            font-size: clamp(0.65rem, 2vw, 1rem);
-            text-align: center;
-            z-index: 100;
-            letter-spacing: 3px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            pointer-events: none;
-        }
+
 
         /* Responsive for 9:16 aspect ratio */
         @media (max-width: 480px) {
@@ -95,10 +82,7 @@
                 padding: 15px;
             }
 
-            .captain-header {
-                top: 15px;
-                font-size: clamp(0.55rem, 1.8vw, 0.8rem);
-            }
+
 
             .hud-spacer {
                 height: 60px;
@@ -120,9 +104,7 @@
                 padding: 18px;
             }
 
-            .captain-header {
-                top: 18px;
-            }
+
 
             .glass-card {
                 max-width: 32rem;
@@ -638,7 +620,6 @@
     <div class="bg-logical" id="parallax-bg"></div>
     <div class="torchlight" id="fire-point"></div>
     <div id="discovery-hint" class="discovery-hint">Move your Torch to Reveal the Riddle</div>
-
     <div class="hud-spacer"></div>
 
     <div class="card-wrapper" style="position: relative;">

@@ -361,14 +361,15 @@ body {
 /* Global HUD System (TV Channel Look) */
 .global-hud {
     position: fixed;
-    top: calc(20px + env(safe-area-inset-top, 0));
-    left: calc(20px + env(safe-area-inset-left, 0));
-    right: calc(20px + env(safe-area-inset-right, 0));
+    top: calc(10px + env(safe-area-inset-top, 0));
+    left: calc(15px + env(safe-area-inset-left, 0));
+    right: calc(15px + env(safe-area-inset-right, 0));
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     pointer-events: none;
     z-index: 9990;
+    gap: 10px;
 }
 
 .tv-logo {
@@ -398,23 +399,37 @@ body {
 }
 
 .hud-left {
+    flex: 1;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    justify-content: flex-start;
+    pointer-events: auto;
+}
+
+.hud-middle {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    pointer-events: auto;
+}
+
+.hud-right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
     pointer-events: auto;
 }
 
 .crew-hud-id {
     font-family: 'Press Start 2P', cursive;
-    font-size: 0.7rem;
+    font-size: clamp(0.6rem, 2vw, 0.8rem);
     color: #FFAA00;
     background: rgba(0, 0, 0, 0.7);
-    padding: 4px 8px;
-    border: 1px solid #5A2D0C;
+    padding: 6px 12px;
+    border: 2px solid #5A2D0C;
     border-radius: 4px;
-    margin-top: 4px;
     text-shadow: 1px 1px 0 #000;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
 }
 
 /* Global Atmospheric Overlay */
@@ -859,8 +874,10 @@ body,
     }
 
     .minecraft-panel {
-        width: 98% !important;
-        padding: 1rem !important;
+        width: 92% !important;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 1.25rem !important;
         border-width: 3px !important;
     }
 
@@ -870,7 +887,7 @@ body,
     }
 
     .tv-logo {
-        width: 110px;
+        width: 100px;
     }
 
     .tv-timer {
@@ -932,16 +949,14 @@ body,
     input,
     select,
     textarea {
-        font-size: 16px !important;
-        /* Prevents zoom on iOS */
+        font-size: 0.9rem !important;
+        min-height: 48px;
     }
 
-    * {
-        cursor: auto !important;
-    }
+    /* Prevents zoom on iOS */
 }
 
-/* Override aggressive touch disabling from page-level "*" rules for interactive controls */
+/* Global cursor & touch usability overrides */
 a,
 button,
 input,
@@ -949,8 +964,12 @@ select,
 textarea,
 label,
 [role="button"] {
-    touch-action: manipulation;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
 }
+
+
 
 /* Smooth native scrolling on iOS for scrollable containers */
 .table-container,
